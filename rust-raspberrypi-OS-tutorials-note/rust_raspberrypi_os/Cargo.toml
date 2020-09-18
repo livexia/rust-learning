@@ -1,9 +1,14 @@
 [package]
-name = "rust_raspberrypi_os"
+name = "kernel"
 version = "0.1.0"
 authors = ["livexia"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+bsp_rpi3 = []
+bsp_rpi4 = []
 
 [dependencies]
