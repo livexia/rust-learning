@@ -8,9 +8,9 @@ learning rust by go through some examples
 
 ## 进度
 
-1. 02 初始化运行时
+1. 03实现Hacky的UART打印输出
 
-## 准备工作
+## 01准备工作
 
 1. 通过hyper-v安装Ubuntu 20.04.1虚拟机
 2. 设置虚拟机环境
@@ -23,7 +23,14 @@ learning rust by go through some examples
     2. 暂时受到虚拟机限制无法连接树莓派
 
 
-## 初始化运行时
+## 02初始化运行时
 
 1. 设置bss段，清空bss段
 2. 清空完成进入panic，等待事件发生
+
+## 03实现Hacky的UART打印输出
+
+1. 编写bsp中的关于写入UART寄存器的方法，write_str
+2. 编写宏print!、println!，来自rust官方
+3. panic中打印信息
+4. kernel_init中打印信息
