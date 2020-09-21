@@ -8,7 +8,7 @@ learning rust by go through some examples
 
 ## 进度
 
-1. 准备工作
+1. 02 初始化运行时
 
 ## 准备工作
 
@@ -21,3 +21,9 @@ learning rust by go through some examples
 3. 测试环境
     1. 使用Windows自带hyper-v虚拟机可以正常运行教程01
     2. 暂时受到虚拟机限制无法连接树莓派
+
+
+## 初始化运行时
+
+1. 设置bss段，清空bss段
+2. 清空完成进入panic，等待事件发生
