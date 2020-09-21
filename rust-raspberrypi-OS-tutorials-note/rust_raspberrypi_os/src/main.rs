@@ -92,20 +92,30 @@
 //! - `crate::memory::*`
 //! - `crate::bsp::memory::*`
 
-#![feature(global_asm)]
 #![feature(asm)]
+#![feature(format_args_nl)]
+#![feature(global_asm)]
 #![feature(stmt_expr_attributes)]
+#![feature(panic_info_message)]
 #![no_main]
 #![no_std]
 
 
 mod bsp;
+mod console;
 mod cpu;
 mod memory;
+mod print;
 mod panic_wait;
 mod runtime_init;
 
 
 unsafe fn kernel_init() -> ! {
-    panic!()
+    println!("[0] Hello from Rust!");
+
+    print!("[1] Came from print! macro");
+
+    println!();
+
+    panic!("OOOOOOO")
 }
