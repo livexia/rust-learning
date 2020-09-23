@@ -8,7 +8,7 @@ learning rust by go through some examples
 
 ## 进度
 
-1. 03实现Hacky的UART打印输出
+1. 04无损失抽象化
 
 ## 01准备工作
 
@@ -34,3 +34,8 @@ learning rust by go through some examples
 2. 编写宏print!、println!，来自rust官方
 3. panic中打印信息
 4. kernel_init中打印信息
+
+## 04无损失抽象化
+
+1. 利用crate::cortex-a替换所有手写汇编
+2. 新增smp模块，初始化系统，替换所有手写汇编
