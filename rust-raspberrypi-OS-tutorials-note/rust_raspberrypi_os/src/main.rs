@@ -92,9 +92,10 @@
 //! - `crate::memory::*`
 //! - `crate::bsp::memory::*`
 
-#![feature(asm)]
+// #![feature(asm)]
+// #![feature(global_asm)]
 #![feature(format_args_nl)]
-#![feature(global_asm)]
+#![feature(naked_functions)]
 #![feature(stmt_expr_attributes)]
 #![feature(panic_info_message)]
 #![no_main]
@@ -111,11 +112,12 @@ mod runtime_init;
 
 
 unsafe fn kernel_init() -> ! {
-    println!("[0] Hello from Rust!");
+    println!("[0] Hello from pure Rust!");
 
     print!("[1] Came from print! macro");
 
     println!();
 
-    panic!("OOOOOOO")
+    panic!("OOOOOOO");
+    // cpu::wait_forever();
 }
