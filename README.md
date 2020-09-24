@@ -35,7 +35,12 @@ learning rust by go through some examples
 3. panic中打印信息
 4. kernel_init中打印信息
 
-## 04无损失抽象化
+## 04无损失抽象化 -> 需要补充笔记
 
 1. 利用crate::cortex-a替换所有手写汇编
 2. 新增smp模块，初始化系统，替换所有手写汇编
+
+## 05使用全局变量进行打印输出 -> 需要补充笔记
+
+1. 利用Rust Cell来进行全局输出记录，统计
+2. 增加NullLock保证不会存在写冲突
