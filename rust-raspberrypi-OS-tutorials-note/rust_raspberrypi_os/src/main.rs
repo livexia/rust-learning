@@ -98,6 +98,7 @@
 #![feature(naked_functions)]
 #![feature(stmt_expr_attributes)]
 #![feature(panic_info_message)]
+#![feature(trait_alias)]
 #![no_main]
 #![no_std]
 
@@ -109,15 +110,22 @@ mod memory;
 mod print;
 mod panic_wait;
 mod runtime_init;
+mod synchronization;
 
 
 unsafe fn kernel_init() -> ! {
+    use crate::console::interface::Statistics;
+    
     println!("[0] Hello from pure Rust!");
 
     print!("[1] Came from print! macro");
 
     println!();
 
+    println!(
+        "[END] Chars written: {}",
+        bsp::console::console().chars_written()
+    );
     panic!("OOOOOOO");
     // cpu::wait_forever();
 }
