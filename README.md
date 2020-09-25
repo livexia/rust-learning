@@ -8,7 +8,7 @@ learning rust by go through some examples
 
 ## 进度
 
-1. 04无损失抽象化
+1. 05使用全局变量进行打印输出
 
 ## 01准备工作
 
