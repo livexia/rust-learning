@@ -8,7 +8,7 @@ learning rust by go through some examples
 
 ## 进度
 
-1. 05使用全局变量进行打印输出
+06_drivers_gpio_uart
 
 ## 01准备工作
 
@@ -44,3 +44,9 @@ learning rust by go through some examples
 
 1. 利用Rust Cell来进行全局输出记录，统计
 2. 增加NullLock保证不会存在写冲突
+
+## 06连接树莓派-运行示例06
+
+1. 运行示例06
+2. 连接树莓派至虚拟机
+3. 获得预期输出
