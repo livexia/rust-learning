@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//
+// Copyright (c) 2018-2020 Andre Richter <andre.o.richter@gmail.com>
+
+//! Architectural processor code.
+
 // global_asm!(include_str!("cpu.S"));
 
 use crate::{bsp, cpu};
@@ -18,10 +24,20 @@ pub unsafe extern "C" fn _start() -> ! {
     
 }
 
-
+/// Pause execution on the core.
 #[inline(always)]
 pub fn wait_forever() -> ! {
     loop {
         asm::wfe()
+    }
+}
+
+/// Spin for `n` cycles.
+pub use asm::nop;
+
+#[inline(always)]
+pub fn spin_for_cycles(n: usize) {
+    for _ in 0..n {
+        asm::nop();
     }
 }
