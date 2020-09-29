@@ -2,7 +2,7 @@
 
 ## 当前进度 2020/9/18
 
-1. 05_safe_globals
+1. 06_drivers_gpio_uart
 
 ## 说明
 
