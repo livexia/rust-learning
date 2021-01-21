@@ -60,6 +60,53 @@ fn main() {
         }
     };
     println!("because answer is {}, so x = {}", answer, x);
+
+    // dot used to access fields of a value
+    let a = (10, 20);
+    let t = a.1;
+    println!("{}", t);
+
+    // dot used to call a method on a value
+    let nick = "fasterthanlime";
+    println!("nike length: {}", nick.len());
+
+    // double-colon: operates on namespaces
+    let least = std::cmp::min(3, 8);
+    println!("least: {}", least);
+    // is equivalent to this
+    use std::cmp::min;
+    let least = min(1, -10);
+    println!("least: {}", least);
+
+    // use directives, impoer both min and max
+    // this works
+    // use std::cmp::min;
+    //use std::cmp::msx;
+
+    // this also works
+    // use std::cmp::{min, max};
+
+    // this also works!
+    // use std::{cmp::{min, max}};
+
+    // use * to import every symbol from a namespace
+    // use std::cmp::*;
+
+    //Types are also namespaces too, methos can be called as regular functions
+    let x = "amos".len(); //this is 4
+    println!("x = {}", x);
+    // use type namespace to call funtion
+    let x = str::len("amos"); // this is also 4
+    println!("x = {}", x);
+
+    // str is a primitive type, there is also many non-primitive types are also in scope by default
+    let v: Vec<i32> = Vec::new();
+
+    // this is same, but with *full* path
+    let v: Vec<i32> = std::vec::Vec::new();
+    
+    // this works because Rust inserts this at beginning of every modules
+    // use std::prelude::v1::*;
 }
 
 fn great() {
