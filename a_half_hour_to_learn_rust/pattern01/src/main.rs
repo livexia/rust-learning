@@ -24,7 +24,7 @@ fn main() {
     print_number_other_than_five(five);
     print_number_other_than_five(fourteen);
 
-    // exact same things
+    // exact same things, use _ to catch all
     let five = Number { odd: true, value: 5 };
     let fourteen = Number { odd: false, value: 14 };
     print_number_other_than_five2(five);
