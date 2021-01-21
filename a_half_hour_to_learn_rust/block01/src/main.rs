@@ -40,6 +40,26 @@ fn main() {
         z - y
     };
     println!("x = {}", x);
+
+    // if is also an expression
+    let x = {
+        if 1 < 2 {
+            2
+        } else {
+            1
+        }
+    };
+    println!("1<2 so x = {}", x);
+
+    // match is also an expression
+    let answer = true;
+    let x = {
+        match answer {
+            true => 1,
+            false => 0
+        }
+    };
+    println!("because answer is {}, so x = {}", answer, x);
 }
 
 fn great() {
