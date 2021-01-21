@@ -36,5 +36,8 @@ fn main() {
     let x:[i32; 6] = [0, 1, 2, 3, 4, 5];
     let (part1, part2) = x.split_at(3);
     println!("{:?}, {:?}", part1, part2);
-
+    
+    // throw away part, throw away less than 2 part
+    let (_, part) = x.split_at(2);
+    println!("{:?}", part);
 }
