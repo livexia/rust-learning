@@ -5,3 +5,5 @@
 > 学习链接：[A half-hour to learn Rust](https://fasterthanli.me/articles/a-half-hour-to-learn-rust)
 
 [turbofish syntax](https://turbo.fish/)
+
+[Common Rust Lifetime Misconceptions](https://github.com/pretzelhammer/rust-blog/blob/master/posts/common-rust-lifetime-misconceptions.md)
