@@ -45,6 +45,22 @@ fn main() {
 
     //toilet closure
     countdown(3, |_| ()); // |_| () looks like a toilet
+
+    // funtion return closure
+    let tester = make_tester("hunter2".into());
+    // let tester = make_tester(String::from("hunter"));
+    println!("{}", tester("*******"));
+    println!("{}", tester("hunter2"));
+
+    // move a reference to some of a function's arguments, into a closure it returns
+    let tester = make_tester_ref("hunter2");
+    println!("{}", tester("*******"));
+    println!("{}", tester("hunter2"));
+
+    // with elided lifetimes
+    let tester = make_tester_elided("hunter2");
+    println!("{}", tester("*******"));
+    println!("{}", tester("hunter2"));
 }
 
 fn for_each_planet<F>(f: F) 
@@ -106,5 +122,26 @@ fn countdown<F>(count: usize, tick: F)
 {
     for i in (1..=count).rev() {
         tick(i);
+    }
+}
+
+// function return closure
+fn make_tester(answer: String) -> impl Fn(&str) -> bool {
+    move |challenge| {
+        challenge == answer
+    }
+}
+
+// function return closure
+fn make_tester_ref<'a>(answer: &'a str) -> impl Fn(&str) -> bool + 'a {
+    move |challenge| {
+        challenge == answer
+    }
+}
+
+// function return closure with elided lifetimes
+fn make_tester_elided(answer: &str) -> impl Fn(&str) -> bool + '_ {
+    move |challenge| {
+        challenge == answer
     }
 }
