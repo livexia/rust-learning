@@ -9,9 +9,13 @@ fn main() {
     let v1 = Vec2{x: 1.0, y: 2.0};
     let v2 = Vec2{y: 2.0, x: 4.0};
     //the order does not matter
+    let x = 1.0;
+    let y = 2.0;
+    let v3 = Vec2{y, x};
 
     println!("v1, x = {}, y = {}", v1.x, v1.y);
     println!("v2, x = {}, y = {}", v2.x, v2.y);
+    println!("v3, x = {}, y = {}", v3.x, v3.y);
 
     // shortcut
     let v3 = Vec2 {
