@@ -26,7 +26,33 @@ fn main() {
     //     tail(&x) // borrowed value does not live long enough
     // };
     // println!("y: {:?}", y);
+    
+    // loop over vec
+    for i in vec![52, 49, 21] {
+        println!("NUmber: {}", i)
+    }
 
+    // loop over slice
+    for i in &[22, 11, 45] {
+        println!("NUmber: {}", i)
+    }
+
+    // loop over iterator
+    // note: `&str` also has a `.bytes()` iterator.
+    // Rust's `char` type is a "Unicode scalar value"
+    for c in "rust".chars() {
+        println!("char: {}", c)
+    }
+
+    // even if the iterator items are filtered and mapped and flattened
+    for c in "sHE'S brOKen"
+        .chars()
+        .filter(|c| c.is_uppercase() || !c.is_ascii_alphabetic()) // 过滤掉大写字母和非ascii码
+        .flat_map(|c| c.to_lowercase()) // 每个字符转为小写
+    {
+        print!("{}", c);
+    }
+    println!();
 }
 
 fn tail<'a>(s: &'a [u8]) -> &'a [u8] {
