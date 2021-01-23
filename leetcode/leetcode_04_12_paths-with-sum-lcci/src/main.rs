@@ -77,15 +77,15 @@ pub fn pre_order_travel(node: &Option<Rc<RefCell<TreeNode>>>, sum: i32, traveled
     let mut traveled_copy = traveled.clone();
     let mut actual_sum_copy = actual_sum + tree_node.val;
     actual_sum_copy -= traveled_copy.remove(0);
-    while  actual_sum_copy != sum && traveled_copy.len() > 0 {
+    while traveled_copy.len() > 0 {
+        if actual_sum_copy == sum {
+            println!("Ok1");
+            println!("c: {:?}", traveled_copy);
+    
+            result += 1;
+            println!("{:?}", traveled);
+        }
         actual_sum_copy -= traveled_copy.remove(0);
-    }
-    if actual_sum_copy == sum && traveled_copy.len() > 0 {
-        println!("Ok1");
-        println!("c: {:?}", traveled_copy);
-
-        result += 1;
-        println!("{:?}", traveled);
     }
 
     if tree_node.left != None{
