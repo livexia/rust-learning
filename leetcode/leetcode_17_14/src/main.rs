@@ -20,5 +20,20 @@ fn main() {
 }
 
 pub fn smallest_k(arr: Vec<i32>, k: i32) -> Vec<i32> {
-    vec![1, 2, 3]
+    if arr.len() == 0 as usize { return vec![]; };
+    let mut result = Vec::new();
+    let mut max = vec![arr[0], 0];
+    for i in 0..arr.len() {
+        if result.len() < k as usize {
+            max = if max[0] < arr[i] { vec![arr[i], i as i32] } else { max };
+            println!("{:?}", max);
+            result.push(arr[i])
+        }
+        if result.len() == k as usize && i + 1 < arr.len() && arr[i+1] < max[0] {
+            result.remove(max[1] as usize);
+            max = vec![arr[i+1], i as i32];
+            println!("OK, {:?}", result);
+        }
+    }
+    result
 }
