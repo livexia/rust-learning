@@ -1,3 +1,5 @@
+use std::usize;
+
 /*
 设计一个算法，找出数组中最小的k个数。以任意顺序返回这k个数均可。
 
@@ -19,31 +21,38 @@ fn main() {
     println!("{:?}", smallest_k(vec![1, 3, 5, 7, 2, 4, 6, 8], 4))
 }
 
-pub fn smallest_k(arr: Vec<i32>, k: i32) -> Vec<i32> {
-    if arr.len() == 0 as usize { return vec![]; };
+pub fn smallest_k(mut arr: Vec<i32>, k: i32) -> Vec<i32> {
+    let len = arr.len();
+    if len == 0 as usize || k == 0 { return vec![]; };
+    quick_select(&mut arr, 0,  len - 1, k as usize);
     let mut result = Vec::new();
-    for i in 0..arr.len() {
-        if result.len() < k as usize {
-            result.push(arr[i])
-        }
-        if result.len() == k as usize && i + 1 < arr.len() {
-            let m = max(&result);
-            if arr[i+1] < m[0] {
-                result.remove(m[1] as usize);
-                println!("OK, {:?}", result);
-            }
-        }
+    for i in 0..k {
+        result.push(arr[i as usize])
     }
     result
 }
 
-pub fn max(a: &Vec<i32>) -> Vec<i32> {
-    let mut result = vec![a[0], 0];
-    for i in 0..a.len() {
-        if a[i] > result[0] {
-            result[0] = a[i];
-            result[1] = i as i32;
+fn quick_select(arr: &mut Vec<i32>, start: usize, end: usize, k: usize) {
+    println!("{:?}, start: {}, end: {}", arr, start, end);
+    if start >= end {
+        return
+    }
+    
+    let pivot = arr[end];
+    let mut i = start;
+    for j in start..end {
+        if arr[j] < pivot {
+            println!("swap {:?}, start: {}, end: {}", arr, j, i);
+            if i != j {
+                arr.swap(j, i);
+            }
+            i += 1
         }
     }
-    result
+    arr.swap(i, end);
+    if i < k {
+        quick_select(arr, i + 1, end, k);
+    } else {
+        quick_select(arr, start, i - 1, k)
+    }
 }
