@@ -37,8 +37,43 @@ connections[i][0] != connections[i][1]
 
 fn main() {
     println!("Hello, world!");
+    println!("{:?}", min_reorder(6, vec![vec![0,1],vec![1,3],vec![2,3],vec![4,0],vec![4,5]]));
+    println!("{:?}", min_reorder(5, vec![vec![1,0],vec![1,2],vec![3,2],vec![3,4]]));
+    println!("{:?}", min_reorder(5, vec![vec![4, 3],vec![2, 3],vec![1, 2],vec![1, 0]]));
 }
 
 pub fn min_reorder(n: i32, connections: Vec<Vec<i32>>) -> i32 {
+    let mut v = Vec::new();
+    let mut res = 0;
+    for i in 0..n as usize {
+        v.push(i);
+    }
+    let mut ret = 1;
+    while ret != 0 {
+        ret = 0;
+        for i in &connections {
+            let root_i = find(&mut v, i[0] as usize);
+            let root_j = find(&mut v, i[1] as usize);
+            if root_i == 0 && root_j != 0{
+                v[root_j] = v[root_i];
+                res += 1;
+                ret = 1;
+            } else if root_i != 0 {
+                if root_j == 0 {
+                    v[root_i] = v[root_j];
+                } else {
+                    ret = 1;
+                }
+            }
+            println!("{:?}", v);
+        }
+    }
+    res
+}
 
+fn find(v: &mut Vec<usize>, i: usize) -> usize {
+    if v[i] != i {
+        v[i] = find(v, v[i]);
+    }
+    v[i]
 }
