@@ -31,13 +31,35 @@
 链接：https://leetcode-cn.com/problems/split-array-into-consecutive-subsequences
 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
 */
-
+use std::collections::HashMap;
 pub fn is_possible(nums: Vec<i32>) -> bool {
-    let mut result: bool = true;
     if nums.len() < 3 {
-        result &= false;
+        return false;
     }
-    result
+
+    let mut map: HashMap<i32, i32> = HashMap::new();
+    for i in nums.iter() {
+        *map.entry(*i).or_insert(0) += 1;
+    }
+    let mut tails: HashMap<i32, i32> = HashMap::new();
+    for i in nums.iter() {
+        if map[i] == 0 {
+            continue;
+        }
+        if *tails.get(&(*i-1)).unwrap_or(&0) > 0 {
+            *map.entry(*i).or_insert(0) -= 1;
+            *tails.entry(*i-1).or_insert(0) -= 1;
+            *tails.entry(*i).or_insert(0) += 1;
+        } else if *map.get(&(*i+1)).unwrap_or(&0) > 0 && *map.get(&(*i+2)).unwrap_or(&0) > 0 {
+            for j in *i..*i+3 {
+                *map.entry(j).or_insert(0) -= 1;
+            }
+            *tails.entry(*i+2).or_insert(0) += 1;
+        } else {
+            return false;
+        }
+    }
+    return true;
 }
 
 #[test]
