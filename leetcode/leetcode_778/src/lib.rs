@@ -1,3 +1,5 @@
+use std::usize;
+
 /*
 在一个 N x N 的坐标方格 grid 中，每一个方格的值 grid[i][j] 表示在位置 (i,j) 的平台高度。
 
@@ -37,7 +39,60 @@ grid[i][j] 是 [0, ..., N*N - 1] 的排列。
 */
 
 pub fn swim_in_water(grid: Vec<Vec<i32>>) -> i32 {
-    3
+    let n = grid.len();
+    let mut connections: Vec<usize> = Vec::new();
+    for i in 0..n*n {
+        connections.push(i);
+    }
+
+    let mut edges: Vec<(usize, usize, usize)> = Vec::new();
+
+    for x in 0..n {
+        for y in 0..n {
+            let nx = x + 1;
+            let ny = y;
+            if nx < n && ny < n {
+                // let height = (grid[x][y] - grid[nx][ny]).abs() as usize;
+                let height = grid[x][y].max(grid[nx][ny]) as usize;
+                edges.push((n * x + y, n * nx + ny, height))
+            }
+            let nx = x;
+            let ny = y + 1;
+            if nx < n && ny < n {
+                // let height = (grid[x][y] - grid[nx][ny]).abs() as usize;
+                let height = grid[x][y].max(grid[nx][ny]) as usize;
+                edges.push((n * x + y, n * nx + ny, height))
+            }
+        }
+    }
+    edges.sort_by(|a, b| a.2.cmp(&b.2));
+    println!("{:?}", edges);
+    
+    let mut max = 0;
+    for edge in edges {
+        if find(&mut connections, 0) == find(&mut connections, n * n - 1) {
+            break;
+        }
+        let (cur_p, next_p, height) = edge;
+        if find(&mut connections, cur_p) != find(&mut connections, next_p) {
+            union(&mut connections, cur_p, next_p);
+            max = max.max(height)
+        }
+    }
+    max as i32
+}
+
+fn find(connections: &mut Vec<usize>, i: usize) -> usize {
+    if connections[i] != i {
+        connections[i] = find(connections, connections[i])
+    }
+    connections[i]
+}
+
+fn union(connections: &mut Vec<usize>, i: usize, j: usize) {
+    let root_i = find(connections, i);
+    let root_j = find(connections, j);
+    connections[root_i] = root_j;
 }
 
 #[test]
