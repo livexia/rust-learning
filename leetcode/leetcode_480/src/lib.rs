@@ -1,4 +1,4 @@
-use std::usize;
+use std::collections::VecDeque;
 
 /*
 中位数是有序序列最中间的那个数。如果序列的大小是偶数，则没有最中间的数；此时中位数是最中间的两个数的平均数。
@@ -32,15 +32,33 @@ use std::usize;
 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
 */
 
+// pub fn median_sliding_window(nums: Vec<i32>, k: i32) -> Vec<f64> {
+//     let mut res: Vec<f64> = Vec::new();
+//     let offset = k as usize;
+//     for i in 0..nums.len() - offset + 1 {
+//         let mut n = nums[i..i+offset].to_vec();
+//         n.sort();
+//         res.push(get_mid(&n));
+//     }
+//     res
+// }
+
 pub fn median_sliding_window(nums: Vec<i32>, k: i32) -> Vec<f64> {
-    let mut res: Vec<f64> = Vec::new();
-    let offset = k as usize;
-    for i in 0..nums.len() - offset + 1 {
-        let mut n = nums[i..i+offset].to_vec();
-        n.sort();
-        res.push(get_mid(&n));
+    let k = k as usize;
+    let (mut windows, mut sorted_windows) = (VecDeque::with_capacity(k), Vec::with_capacity(k));
+    let mut medians = Vec::with_capacity(nums.len().max(k) - k + 1);
+    for n in nums {
+        windows.push_back(n);
+        sorted_windows.insert(sorted_windows.binary_search(&n).unwrap_or_else(|i| i), n);
+        if sorted_windows.len() < k {
+            continue;
+        }
+        if sorted_windows.len() > k {
+            sorted_windows.remove(sorted_windows.binary_search(&windows.pop_front().unwrap()).unwrap());
+        }
+        medians.push(get_mid(&sorted_windows));
     }
-    res
+    medians
 }
 
 pub fn get_mid(nums: &[i32]) -> f64 {
@@ -49,5 +67,5 @@ pub fn get_mid(nums: &[i32]) -> f64 {
 
 #[test]
 fn it_works() {
-    assert_eq!(vec![2.0], median_sliding_window(vec![1,3,-1,-3,5,3,6,7], 3));
+    assert_eq!(vec![1.0, -1.0, -1.0, 3.0, 5.0, 6.0], median_sliding_window(vec![1,3,-1,-3,5,3,6,7], 3));
 }
