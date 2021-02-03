@@ -43,20 +43,21 @@ S 是一个有效括号字符串
 
 pub fn remove_outer_parentheses(s: String) -> String {
     let mut string = "".to_string();
-    let mut stack = Vec::new();
+    let mut flag = 0;
 
     for i in s.chars() {
-        if i == ')' {
-            stack.pop();
-        }
-        if !stack.is_empty() {
-            string.push(i)
-        }
-        if i == '(' {
-            stack.push(i);
+        match i {
+            '(' => {
+                if flag != 0 { string.push('('); }
+                flag += 1;
+            },
+            ')' => {    
+                flag -= 1;
+                if flag != 0 { string.push(')'); }
+            },
+            _ => ()
         }
     }
-
     string
 }
 
