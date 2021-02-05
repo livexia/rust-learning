@@ -58,6 +58,35 @@ pub fn equal_substring(s: String, t: String, max_cost: i32) -> i32 {
     max as i32
 }
 
+/*
+当框内总消耗小于消耗阈值时，延展右侧窗口。
+当框内纵消耗大于消耗阈值时，当前长度定为最大值；右侧移动一格，左侧也随之移动一格，维持窗口为最大符合条件的大小。
+直到可以继续扩充时，才扩充右侧大小，所以在整个滑动过程中，窗口的大小是依据合法性只增不减，且直到数据末尾时的窗口大小为所有子串中的最大合法窗口，且右指针与n重合，窗口大小为n-l。
+使用窗口合法非递减的性质，利用左右指针保证了算法的正确性。妙绝妙绝。
+https://leetcode-cn.com/problems/get-equal-substrings-within-budget/comments/771699
+*/
+
+pub fn equal_substring2(s: String, t: String, max_cost: i32) -> i32 {
+    let mut expenses = Vec::new();
+    for (a, b) in s.chars().zip(t.chars()) {
+        expenses.push((a as i32 - b as i32).abs())
+    }
+    let mut left: usize = 0;
+    let mut right: usize = 0;
+    let mut cost = 0;
+
+    while right < expenses.len() {
+        cost += expenses[right];
+        right += 1;
+        if cost > max_cost {
+            cost -= expenses[left];
+            left += 1;
+        }
+    }
+
+    (right - left) as i32
+}
+
 #[test]
 fn t1() {
     assert_eq!(equal_substring("abcd".to_string(), "bcdf".to_string(), 3), 3);
