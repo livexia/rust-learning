@@ -53,12 +53,70 @@ pub fn largest_rectangle_area_brute_force2(heights: Vec<i32>) -> i32 {
     res
 }
 
+pub fn largest_rectangle_area(heights: Vec<i32>) -> i32 {
+    let n = heights.len();
+    let mut left = vec![-1; n];
+    let mut right = vec![n as i32; n];
+    let mut ans = 0;
+
+    let mut stack: Vec<usize> = Vec::new();
+    for i in 0..n {
+        while !stack.is_empty() && heights[stack[stack.len() - 1]] >= heights[i] {
+            stack.pop();
+        }
+        if !stack.is_empty() {
+            left[i] = stack[stack.len() - 1] as i32;
+        }
+        stack.push(i);
+    }
+    
+    let mut stack: Vec<usize> = Vec::new();
+    for i in (0..n).rev() {
+        while !stack.is_empty() && heights[stack[stack.len() - 1]] >= heights[i] {
+            stack.pop();
+        }
+        if !stack.is_empty() {
+            right[i] = stack[stack.len() - 1] as i32;
+        }
+        stack.push(i);
+    }
+    for i in 0..n {
+        ans = ans.max((right[i] - left[i] - 1) * heights[i])
+    }
+    ans
+}
+
+pub fn largest_rectangle_area2(heights: Vec<i32>) -> i32 {
+    let n = heights.len();
+    let mut left = vec![-1; n];
+    let mut right = vec![n as i32; n];
+    let mut ans = 0;
+
+    let mut stack: Vec<usize> = Vec::new();
+    for i in 0..n {
+        while !stack.is_empty() && heights[stack[stack.len() - 1]] >= heights[i] {
+            right[stack[stack.len() - 1]] = i as i32;
+            stack.pop();
+        }
+        if !stack.is_empty() {
+            left[i] = stack[stack.len() - 1] as i32;
+        }
+        stack.push(i);
+    }
+    for i in 0..n {
+        ans = ans.max((right[i] - left[i] - 1) * heights[i])
+    }
+    ans
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::largest_rectangle_area_brute_force2;
+    use crate::largest_rectangle_area2;
 
     #[test]
     fn it_works() {
-        assert_eq!(largest_rectangle_area_brute_force2(vec![2, 1, 5, 6, 2, 3]), 10);
+        assert_eq!(largest_rectangle_area2(vec![6, 7, 5, 2, 4, 5, 9, 3]), 16);
+        assert_eq!(largest_rectangle_area2(vec![2, 1, 5, 6, 2, 3]), 10);
+        assert_eq!(largest_rectangle_area2(vec![2, 4]), 4);
     }
 }
