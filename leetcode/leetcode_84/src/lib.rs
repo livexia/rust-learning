@@ -33,12 +33,32 @@ pub fn largest_rectangle_area_brute_force(heights: Vec<i32>) -> i32 {
     res
 }
 
+pub fn largest_rectangle_area_brute_force2(heights: Vec<i32>) -> i32 {
+    let mut res = 0;
+    let n = heights.len();
+
+    for i in 0..n {
+        let mut left = i;
+        let mut right  = i;
+        let height = heights[i];
+
+        while left > 0 && heights[left - 1] >= height {
+            left -= 1;
+        }
+        while right < n - 1 && heights[right + 1] >= height {
+            right += 1;
+        }
+        res = res.max((right - left + 1) as i32 * height);
+    }
+    res
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::largest_rectangle_area_brute_force;
+    use crate::largest_rectangle_area_brute_force2;
 
     #[test]
     fn it_works() {
-        assert_eq!(largest_rectangle_area_brute_force(vec![2, 1, 5, 6, 2, 3]), 10);
+        assert_eq!(largest_rectangle_area_brute_force2(vec![2, 1, 5, 6, 2, 3]), 10);
     }
 }
