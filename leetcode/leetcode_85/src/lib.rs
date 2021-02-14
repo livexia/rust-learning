@@ -35,7 +35,7 @@ matrix[i][j] 为 '0' 或 '1'
 */
 
 // 方法二在参考学习84题后再进行补充
-pub fn maximal_rectangle(matrix: Vec<Vec<char>>) -> i32 {
+pub fn maximal_rectangle_brute_force(matrix: Vec<Vec<char>>) -> i32 {
     let m = matrix.len();
     if m == 0 {
         return 0;
@@ -70,6 +70,47 @@ pub fn maximal_rectangle(matrix: Vec<Vec<char>>) -> i32 {
             }
             
             res = res.max(area);
+        }
+    }
+    res
+}
+
+pub fn maximal_rectangle(matrix: Vec<Vec<char>>) -> i32 {
+    let m = matrix.len();
+    if m == 0 {
+        return 0;
+    }
+    let n = matrix[0].len();
+    let mut left = vec![vec![0 as i32; n]; m];
+    for i in 0..m {
+        for j in 0..n {
+            if matrix[i][j] == '1' {
+                left[i][j] = match j {
+                    0 => 1,
+                    _ => left[i][j-1] + 1
+                }
+            }
+        }
+    }
+    let mut res = 0;
+    for j in 0..n {
+        let mut up = vec![-1; m];
+        let mut down = vec![m as i32; m];
+        let mut stack: Vec<usize> = Vec::new();
+
+        for i in 0..m {
+            while !stack.is_empty() && left[stack[stack.len() - 1]][j] >= left[i][j] {
+                down[stack[stack.len() - 1]] = i as i32;
+                stack.pop();
+            }
+            if !stack.is_empty() {
+                up[i] = stack[stack.len() - 1] as i32;
+            }
+            stack.push(i);
+        }
+
+        for i in 0..m {
+            res = res.max((down[i] - up[i] - 1)*left[i][j]);
         }
     }
     res
