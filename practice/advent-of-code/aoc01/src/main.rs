@@ -1,5 +1,5 @@
 use std::io::{self, Read, Write};
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 type Result<T> = ::std::result::Result<T, Box<dyn (::std::error::Error)>>;
 
@@ -17,7 +17,8 @@ fn part1(input: &str) -> Result<()>{
     let mut freq = 0;
 
     for line in input.lines() {
-        freq += line.parse::<i32>()?;
+        let change: i32 = line.parse()?;
+        freq += change;
     }
     writeln!(io::stdout(), "{}", freq)?;
     Ok(())
@@ -25,16 +26,18 @@ fn part1(input: &str) -> Result<()>{
 
 fn part2(input: &str) -> Result<()> {
     let mut freq = 0;
-    let mut freq_hashmap: HashMap<i32, u8> = HashMap::new();
+    let mut seen = HashSet::new(); // use HashSet instead of HashMap
+    seen.insert(0); // first insert 0
     
     loop {
         for line in input.lines() {
-            freq += line.parse::<i32>()?;
-            if freq_hashmap.contains_key(&freq) {
+            let change: i32 = line.parse()?;
+            freq += change;
+            if seen.contains(&freq) {
                 writeln!(io::stdout(), "{}", freq)?;
                 return Ok(());
             } 
-            freq_hashmap.entry(freq).or_insert(1);
+            seen.insert(freq);
         }
     }
 }
