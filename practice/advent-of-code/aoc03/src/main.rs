@@ -1,73 +1,131 @@
-use std::io::{self, Read, Write};
+#[macro_use]
+extern crate lazy_static;
+// extern crate regex;
 
-type Result<T> = ::std::result::Result<T, Box<dyn (::std::error::Error)>>;
+use std::collections::HashMap;
+use std::error::Error;
+use std::io::{self, Read, Write};
+use std::str::FromStr;
+
+use regex::Regex;
+
+macro_rules! err {
+    ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) }
+}
+
+type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
+
+type Grid = HashMap<(u32, u32), u32>;
 
 fn main() -> Result<()>{
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    part1(&input)?;
-    part2(&input)?;
+    let mut claims: Vec<Claim> = vec![];
+    for line in input.lines() {
+        let claim = line.parse().or_else(|err| {
+            err!("failed to parse '{:?}': {}", line, err)
+        })?;
+        claims.push(claim);
+    }
 
+    let mut grid = Grid::new();
+    for claim in &claims {
+        for (x, y) in claim.iter_points() {
+            *grid.entry((x, y)).or_default() += 1;
+        }
+    }
+
+    println!("{:?}", grid.len());
+
+    part1(&grid)?;
+    part2(&claims, &grid)?;
     Ok(())
 }
 
-fn part1(input: &str) -> Result<()> {
-    let mut fabric = vec![vec![0; 1000]; 1000];
-    for claim in input.lines() {
-        let claim: Vec<_> =  claim.split(' ')
-         .filter(|&x| x != "@")
-         .collect();
-         let id = claim[0].strip_prefix("#").unwrap();
-         let start: Vec<usize> = claim[1].strip_suffix(':').unwrap().split(',')
-         .map(|f| f.parse::<usize>().unwrap()).collect();
-        let area: Vec<usize> = claim[2].split('x')
-        .map(|f| f.parse::<usize>().unwrap()).collect();
-        for i in start[0]..start[0]+area[0] {
-            for j in start[1]..start[1]+area[1] {
-                fabric[i][j] += 1;
-            }
-        }
-
-    }
-
-    let mut res = 0;
-    fabric.iter().for_each(|f| f.into_iter().for_each(|&f| if f > 1 { res += 1} ));
-
-    writeln!(io::stdout(), "{}", res)?;
+fn part1(grid: &Grid) -> Result<()> {
+    let count = grid.values().filter(|&&count| count > 1).count();
+    writeln!(io::stdout(), "contested points: {}", count)?;
     Ok(())
 }
 
-fn part2(input: &str) -> Result<()> {
-    let mut fabric = vec![vec![0; 1000]; 1000];
-    let mut claims: Vec<(&str, usize, usize, usize, usize)> = Vec::new();
-    for claim in input.lines() {
-        let claim: Vec<_> =  claim.split(' ')
-         .filter(|&x| x != "@")
-         .collect();
-        let id = claim[0].strip_prefix("#").unwrap();
-        let start: Vec<usize> = claim[1].strip_suffix(':').unwrap().split(',')
-         .map(|f| f.parse::<usize>().unwrap()).collect();
-        let area: Vec<usize> = claim[2].split('x')
-        .map(|f| f.parse::<usize>().unwrap()).collect();
-        claims.push((id, start[0], start[1], area[0], area[1]));
-        for i in start[0]..start[0]+area[0] {
-            for j in start[1]..start[1]+area[1] {
-                fabric[i][j] += 1;
-            }
+fn part2(claims: &[Claim], grid: &Grid) -> Result<()> {
+    for claim in claims {
+        if claim.iter_points().all(|p| grid[&p] == 1) {
+            writeln!(io::stdout(), "uncontested claim: {}", claim.id)?;
+            return Ok(());
         }
     }
-    'outer: for (id, x, y, width, height) in claims {
-        for i in x..x+width {
-            for j in y..y+height {
-                if fabric[i][j] > 1 {
-                    continue 'outer;
-                }
-            }
-        }
-        writeln!(io::stdout(), "{}", id)?;
-        return Ok(());
-    }
-    Err(From::from("Can not find only claim that doesn't overlap"))
+    err!("no uncontested claims")
 }
 
+#[derive(Debug)]
+struct Claim {
+    id: u32,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+impl Claim {
+    fn iter_points(&self) -> IterPoints {
+        IterPoints {
+            claim: self,
+            px: self.x,
+            py: self.y,
+        }
+    }
+}
+
+struct IterPoints<'c> {
+    claim: &'c Claim,
+    px: u32,
+    py: u32,
+}
+
+impl <'c> Iterator for IterPoints<'c> {
+    type Item = (u32, u32);
+
+    fn next(&mut self) -> Option<(u32, u32)> {
+        if self.py >= self.claim.y + self.claim.height {
+            self.py = self.claim.y;
+            self.px += 1;
+        }
+        if self.px >= self.claim.x + self.claim.width {
+            return None;
+        }
+        let (px, py) = (self.px, self.py);
+        self.py += 1;
+        Some((px, py))
+    }
+}
+
+impl FromStr for Claim {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Claim> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"(?x)
+                \#
+                (?P<id>[0-9]+)
+                \s+@\s+
+                (?P<x>[0-9]+),(?P<y>[0-9]+):
+                \s+
+                (?P<width>[0-9]+)x(?P<height>[0-9]+)
+            ").unwrap();
+        }
+
+        let caps = match RE.captures(s) {
+            None => return err!("unrecognized claim"),
+            Some(caps) => caps,
+        };
+        Ok(Claim {
+            id: caps["id"].parse()?,
+            x: caps["x"].parse()?,
+            y: caps["y"].parse()?,
+            width: caps["width"].parse()?,
+            height: caps["height"].parse()?,
+        })
+    }
+}
