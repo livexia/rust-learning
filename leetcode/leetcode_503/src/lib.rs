@@ -1,3 +1,5 @@
+use core::num;
+
 /**
 给定一个循环数组（最后一个元素的下一个元素是数组的第一个元素），输出每个元素的下一个更大元素。数字 x 的下一个更大的元素是按数组遍历顺序，这个数字之后的第一个比它更大的数，这意味着你应该循环地搜索它的下一个更大的数。如果不存在，则输出 -1。
 
@@ -36,8 +38,16 @@ pub fn next_greater_elements_brute_force(nums: Vec<i32>) -> Vec<i32> {
 }
 
 pub fn next_greater_elements(nums: Vec<i32>) -> Vec<i32> {
+    if nums.is_empty() { return vec![]; }
     let n = nums.len();
-    let mut ans = vec![];
+    let mut ans = vec![-1; n];
+    let mut stack = vec![];
+    for i in 0..2*n-1 {
+        while !stack.is_empty() && nums[*stack.last().unwrap()] < nums[i % n] {
+            ans[stack.pop().unwrap()] = nums[i % n];
+        }
+        stack.push(i % n);
+    }
     ans
 
 }
