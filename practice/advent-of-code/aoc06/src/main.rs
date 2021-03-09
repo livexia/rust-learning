@@ -24,88 +24,50 @@ fn main() -> Result<()>{
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    let mut coordinates: Vec<Coordinate> = vec![];
-    for line in input.lines() {
-        let coordinate = line.parse().or_else(|err| {
-            err!("failed to parse '{:?}': {}", line, err)
-        })?;
-        coordinates.push(coordinate);
+    let coordinates = input
+        .lines()
+        .map(|line| line.parse())
+        .collect::<Result<Vec<Coordinate>>>()?;
+    if coordinates.is_empty() {
+        return err!("no coordinates given");
     }
-    coordinates.sort_by(|c1, c2| (c1.x+c1.y).cmp(&(c2.x + c2.y)));
 
-    let m = (coordinates.iter().max_by_key(| &c | c.x).unwrap().x + 1) as usize;
-    let n = (coordinates.iter().max_by_key(| &c | c.y).unwrap().y + 1) as usize;
-    
-    part1(&coordinates, m, n)?;
-    part2(&coordinates, m, n)?;
+    let mut grid = Grid::new(coordinates);
+    grid.find_finite();
+
+
+    part1(&grid)?;
+    part2(&grid)?;
     
     Ok(())
 }
 
-fn part1(coordinates: &Vec<Coordinate>, m: usize, n: usize) -> Result<()>{
-    let mut grid = vec![vec![(None, std::u32::MAX); n]; m];
-
-    for c in coordinates {
-        grid[c.x as usize][c.y as usize] = (Some(c), 0u32);
-    }
-    for i in 0..m {
-        for j in 0..n {
-            for c in coordinates {
-                if grid[i][j].1 == 0 {
-                    continue;
-                }
-                let coordinate = Coordinate { x: i as i32, y: j as i32};
-                let distance = c.manhattan_distance(coordinate) as u32;
-                if distance == grid[i][j].1 {
-                    grid[i][j].0 = None;
-                } else if distance < grid[i][j].1 {
-                    grid[i][j] = (Some(c), distance);
-                }
+fn part1(grid: &Grid) -> Result<()>{
+    let mut biggest_area = 0;
+    for &loc in &grid.finite {
+        let mut candidate_area = 0;
+        for &loc2 in grid.table.values() {
+            if loc == loc2 {
+                candidate_area += 1;
             }
         }
+        biggest_area = biggest_area.max(candidate_area);
     }
 
-    let mut area: HashMap<&Coordinate, u32> = HashMap::new();
-    let mut infinite_coordinate: HashSet<&Coordinate> = HashSet::new();
-    
-    for i in 0..m {
-        for j in 0..n {
-            if i == 0 || j == 0 || i == m - 1 || j == n -1 {
-                if let Some(coordinate) = grid[i][j].0 {
-                    infinite_coordinate.insert(coordinate);
-                }
-            }
-        }
-    }
-    for i in 0..m {
-        for j in 0..n {
-            if let Some(coordinate) = grid[i][j].0 {
-                if !infinite_coordinate.contains(coordinate) {
-                    *area.entry(coordinate).or_insert(0) += 1;
-                }
-            }
-        }
-    }
-
-    let max_area = area.iter().max_by(|a, b| a.1.cmp(&b.1)).unwrap();
-    writeln!(io::stdout(), "the size of the largest area that isn't infinite: {}", max_area.1)?;
+    writeln!(io::stdout(), "the size of the largest area that isn't infinite: {}", biggest_area)?;
     
     Ok(())
 }
 
 
-fn part2(coordinates: &Vec<Coordinate>, m: usize, n: usize) -> Result<()>{
-    let mut grid = vec![vec![0u32; n]; m];
+fn part2(grid: &Grid) -> Result<()>{
+    let bound = 500;
+    let mut size = 0;
 
-    let mut size = 0u32;
-    for i in 0..m {
-        for j in 0..n {
-            for c in coordinates {
-                let coordinate = Coordinate { x: i as i32, y: j as i32};
-                grid[i][j] += c.manhattan_distance(coordinate) as u32;
-            }
-            if grid[i][j] < 10000 {
-                size += 1;
+    for x in -bound..=bound {
+        for y in -bound..=bound {
+            if grid.distance_sum(Coordinate { x, y }) < 10000 {
+                size += 1
             }
         }
     }
@@ -117,10 +79,62 @@ fn part2(coordinates: &Vec<Coordinate>, m: usize, n: usize) -> Result<()>{
 
 #[derive(Debug)]
 struct Grid {
-    grid: Vec<Vec<Coordinate>>
+    locations: Vec<Coordinate>,
+    finite: HashSet<Coordinate>,
+    table: HashMap<Coordinate, Coordinate>,
 }
 
-#[derive(Debug, Hash, Eq)]
+impl Grid {
+    fn new(locations: Vec<Coordinate>) -> Self {
+        assert!(!locations.is_empty());
+        Grid { locations, finite: HashSet::new(), table: HashMap::new() }
+    }
+
+    fn find_finite(&mut self) {
+        for step in 0..100 {
+            for loc in &self.locations {
+                if self.finite.contains(&loc) {
+                    continue;
+                }
+                for c in loc.border(step) {
+                    let closest = match self.closest_location(c) {
+                        None => continue,
+                        Some(closest) => closest,
+                    };
+                    self.table.insert(c, closest);
+                }
+            }
+            for &loc in &self.locations {
+                if loc.border(step).all(|c| self.table.get(&c) != Some(&loc)) {
+                    self.finite.insert(loc);
+                }
+            }
+        }
+    }
+
+    fn distance_sum(&self, c: Coordinate) -> i32 {
+        self.locations.iter().map(|&loc| loc.manhattan_distance(c)).sum()
+    }
+
+    fn closest_location(&self, c: Coordinate) -> Option<Coordinate> {
+        let (mut min, mut unique) = (self.locations[0], true);
+        for &loc in &self.locations[1..] {
+            if loc.manhattan_distance(c) == min.manhattan_distance(c) {
+                unique = false;
+            } else if loc.manhattan_distance(c) < min.manhattan_distance(c) {
+                min = loc;
+                unique = true;
+            }
+        }
+        if !unique {
+            None
+        } else {
+            Some(min)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 struct Coordinate {
     x: i32,
     y: i32,
@@ -146,14 +160,17 @@ impl FromStr for Coordinate {
     }
 }
 
-impl PartialEq for Coordinate {
-    fn eq(&self, other: &Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-
 impl Coordinate {
-    fn manhattan_distance(&self, coordinate: Coordinate) -> i32 {
-        (self.x - coordinate.x).abs() + (self.y - coordinate.y).abs()
+    fn manhattan_distance(&self, other: Coordinate) -> i32 {
+        (self.x - other.x).abs() + (self.y - other.y).abs()
+    }
+
+    fn border(self, step: i32) -> impl Iterator<Item=Coordinate> {
+        (self.x - step..=self.x + step)
+            .flat_map(move |x| {
+                (self.y - step..=self.y + step)
+                .map(move |y| Coordinate { x, y })
+            })
+            .filter(move |&c2| self.manhattan_distance(c2) == step)
     }
 }
