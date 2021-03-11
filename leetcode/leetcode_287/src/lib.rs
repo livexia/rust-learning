@@ -38,7 +38,7 @@ nums 中 只有一个整数 出现 两次或多次 ，其余整数均只出现 �
 
 use std::collections::HashSet;
 
-pub fn find_duplicate(nums: Vec<i32>) -> i32 {
+pub fn find_duplicate_hash(nums: Vec<i32>) -> i32 {
     let mut set = HashSet::new();
     for i in nums {
         if set.contains(&i) {
@@ -49,10 +49,29 @@ pub fn find_duplicate(nums: Vec<i32>) -> i32 {
     0
 }
 
+pub fn find_duplicate(nums: Vec<i32>) -> i32 {
+    let mut slow = 0;
+    let mut fast = 0;
+    while (slow == 0 && fast == 0) || slow != fast {
+        slow = nums[slow] as usize;
+        fast = nums[nums[fast as usize] as usize] as usize;
+    }
+    slow = 0;
+    while slow != fast {
+        println!("s: {}, {}", slow, fast);
+        slow = nums[slow] as usize;
+        fast = nums[fast] as usize;
+        println!("s: {}, {}", slow, fast);
+    }
+    slow as i32
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::find_duplicate;
+
     #[test]
     fn it_works() {
-        assert_eq!(2 + 2, 4);
+        assert_eq!(find_duplicate(vec![1, 3, 4, 2, 2]), 2);
     }
 }
