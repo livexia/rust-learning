@@ -39,7 +39,7 @@ myHashSet.contains(2); // 返回 False ，（已移除）
 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
 */
 struct MyHashSet {
-    set_: Vec<bool>,
+    buckets: Vec<Vec<i32>>,
 }
 
 
@@ -52,21 +52,29 @@ impl MyHashSet {
     /** Initialize your data structure here. */
     fn new() -> Self {
         Self {
-            set_: vec![false; 1000001]
+            buckets: vec![vec![]; 1000]
         }
     }
     
     fn add(&mut self, key: i32) {
-        self.set_[key as usize] = true;
+        let id = key as usize % 1000;
+        if !self.buckets[id].contains(&key) {
+            self.buckets[id].push(key)
+        }
     }
     
     fn remove(&mut self, key: i32) {
-        self.set_[key as usize] = false;
+        let id = key as usize % 1000;
+        match self.buckets[id].iter().position(|&x| x == key) {
+            Some(i) => self.buckets[id].remove(i),
+            None => 0,
+        };
     }
     
     /** Returns true if this set contains the specified element */
     fn contains(&self, key: i32) -> bool {
-        self.set_[key as usize]
+        let id = key as usize % 1000;
+        self.buckets[id].contains(&key)
     }
 }
 
