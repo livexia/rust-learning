@@ -20,15 +20,11 @@ pub fn lexical_order(n: i32) -> Vec<i32> {
 }
 
 fn dfs(n: i32, mut temp: i32, answer: &mut Vec<i32>) {
-    if temp > n {
-        return;
-    }
+    if temp > n { return; }
     for i in 0..=9 {
         let pre = temp;
         temp = temp * 10 + i;
-        if temp == 0 {
-            continue;
-        }
+        if temp == 0 { continue; }
         if temp > n { return; }
         answer.push(temp);
         dfs(n, temp, answer);
