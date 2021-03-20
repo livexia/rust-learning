@@ -1,4 +1,4 @@
-use std::{io::{self, Read, Write}, iter::Sum};
+use std::io::{self, Write};
 use std::error::Error;
 use std::result;
 
@@ -16,7 +16,7 @@ fn main() -> Result<()>{
     let mut grid = vec![vec![0; 301]; 301];
     for x in 1..301 {
         for y in 1..301 {
-            grid[x][y] = power_level(x, y, serial_number);
+            grid[x][y] = power_level(x, y, serial_number) + grid[x-1][y] + grid[x][y-1] - grid[x-1][y-1];
         }
     }
     
@@ -33,10 +33,7 @@ fn part1(grid: &Vec<Vec<i32>>) -> Result<()> {
 
     for x in 1..299 {
         for y in 1..299 {
-            let mut temp = 0;
-            for i in 0..3 {
-                temp += grid[x+i][y..y+3].iter().sum::<i32>();
-            }
+            let temp = grid[x+2][y+2] + grid[x-1][y-1] - grid[x-1][y+2] - grid[x+2][y-1];
             if temp > max {
                 max = temp;
                 answer = (x, y);
@@ -54,23 +51,15 @@ fn part1(grid: &Vec<Vec<i32>>) -> Result<()> {
 }
 
 fn part2(grid: &Vec<Vec<i32>>) -> Result<()> {
-    let mut answer = (1, 1, 0);
+    let mut answer = (1, 1, 1);
     let mut max = 0;
-
-    let mut sum_grid = vec![vec![0; 301]; 301];
-    for x in 1..301 {
-        for y in 1..301 {
-            sum_grid[x][y] = grid[x][y] + sum_grid[x-1][y] + sum_grid[x][y-1] - sum_grid[x-1][y-1];
-        }
-    }
-
     for x in 1..301 {
         for y in 1..301 {
             for c in 0..301 {
                 if x + c > 300 || y + c > 300 {
                     continue;
                 }
-                let temp = sum_grid[x+c][y+c] + sum_grid[x-1][y-1] - sum_grid[x-1][y+c] - sum_grid[x+c][y-1];
+                let temp = grid[x+c][y+c] + grid[x-1][y-1] - grid[x-1][y+c] - grid[x+c][y-1];
                 if temp > max {
                     max = temp;
                     answer = (x, y, c + 1);
