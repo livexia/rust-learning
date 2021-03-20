@@ -3,6 +3,7 @@ use std::error::Error;
 use std::result;
 use std::str::FromStr;
 use std::time::Instant;
+use std::collections::HashMap;
 
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) };
@@ -51,8 +52,11 @@ fn main() -> Result<()>{
 }
 
 fn run(mut tunel: Tunel, generations: u32) -> Result<()>{
-    for _ in 1..=generations {
+    for i in 1..=generations {
         tunel.next();
+        if i % 10000 == 0 {
+            println!("generation: {}", i);
+        }
     }
     let mut sum = 0;
     let n = tunel.pots.len();
@@ -67,17 +71,17 @@ fn run(mut tunel: Tunel, generations: u32) -> Result<()>{
 struct Tunel {
     pots: Vec<u8>,
     zero: usize,
-    notes: Vec<Note>,
+    notes: HashMap<Vec<u8>, u8>,
 }
 
 impl Tunel {
     fn new(init: Vec<u8>, notes: Vec<Note>) -> Self {
         let mut pots = [0].repeat(3).iter().chain(init.iter()).cloned().collect::<Vec<u8>>();
-        pots.extend([0].repeat(3));
+        pots.push(0);
         Tunel {
             pots,
             zero: 3,
-            notes,
+            notes: notes.iter().map(|n| (n.current_state.clone(), n.next_state)).collect(),
         }
     }
 
@@ -85,25 +89,23 @@ impl Tunel {
         let mut pots = vec![];
         
         let n = self.pots.len();
-        let mut slice = vec![0, 0, self.pots[0], self.pots[1]];
-        let mut l = 4;
+        let mut slice = vec![0, 0, 0, self.pots[0], self.pots[1]];
         for i in 0..n {
             if i + 2 < n {
                 slice.push(self.pots[i+2]);
             } else {
                 slice.push(0);
             }
-            l += 1;
-            let s = &slice[l-5..l];
-            if let Some(index) = self.notes.iter().position(|n| n.current_state == s) {
-                pots.push(self.notes[index].next_state);
+            slice.remove(0);
+            if let Some(&next_state) = self.notes.get(&slice) {
+                pots.push(next_state);
             } else {
                 pots.push(0);
             }
         }
-        pots.push(0);
-        pots.push(0);
-        pots.push(0);
+        if pots.last() == Some(&1) {
+            pots.push(0);
+        }
         self.pots = pots;
     }
 }
