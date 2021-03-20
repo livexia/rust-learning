@@ -81,7 +81,9 @@ impl Tunel {
         Tunel {
             pots,
             zero: 3,
-            notes: notes.iter().map(|n| (n.current_state.clone(), n.next_state)).collect(),
+            notes: notes.iter()
+                .filter(|n| n.next_state != 0)
+                .map(|n| (n.current_state.clone(), n.next_state)).collect(),
         }
     }
 
