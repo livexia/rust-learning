@@ -1,4 +1,4 @@
-use std::io::{self, Read, Write};
+use std::{env::set_current_dir, io::{self, Read, Write}};
 use std::error::Error;
 use std::result;
 use std::str::FromStr;
@@ -55,29 +55,33 @@ fn run(mut tunel: Tunel, generations: u32) -> Result<()>{
     for i in 1..=generations {
         tunel.next();
         if i % 10000 == 0 {
-            println!("generation: {}", i);
+            println!("generation: {}, planted pots: {}", i, tunel.pots.len());
         }
     }
-    let mut sum = 0;
-    let n = tunel.pots.len();
-    for i in 0..n {
-        sum += tunel.pots[i] as i32 * (i as i32 - tunel.zero as i32);
-    }
+    let sum: i32 = tunel.pots
+        .iter()
+        .map(|(i, _)| i)
+        .sum();
+
     writeln!(io::stdout(), "{} generations answer: {}", generations, sum)?;
     Ok(())
 }
 
 #[derive(Debug, Clone)]
 struct Tunel {
-    pots: Vec<u8>,
+    pots: HashMap<i32, u8>,
     zero: usize,
     notes: HashMap<Vec<u8>, u8>,
 }
 
 impl Tunel {
     fn new(init: Vec<u8>, notes: Vec<Note>) -> Self {
-        let mut pots = [0].repeat(3).iter().chain(init.iter()).cloned().collect::<Vec<u8>>();
-        pots.push(0);
+        let pots: HashMap<i32, u8> = init
+            .iter()
+            .enumerate()
+            .filter(|(_, &x)| x != 0)
+            .map(|(i, &x)| (i as i32, x))
+            .collect();
         Tunel {
             pots,
             zero: 3,
@@ -88,25 +92,21 @@ impl Tunel {
     }
 
     fn next(&mut self) {
-        let mut pots = vec![];
-        
-        let n = self.pots.len();
-        let mut slice = vec![0, 0, 0, self.pots[0], self.pots[1]];
-        for i in 0..n {
-            if i + 2 < n {
-                slice.push(self.pots[i+2]);
-            } else {
-                slice.push(0);
+        let mut pots: HashMap<i32, u8> = HashMap::new();
+        for i in self.pots.keys() {
+            for j in i-2..=i+2 {
+                let mut slice = vec![];
+                for k in j-2..=j+2 {
+                    if let Some(&x) = self.pots.get(&k) {
+                        slice.push(x);
+                    } else {
+                        slice.push(0);
+                    }
+                }
+                if let Some(&next_state) = self.notes.get(&slice) {
+                    pots.insert(j, next_state);
+                }
             }
-            slice.remove(0);
-            if let Some(&next_state) = self.notes.get(&slice) {
-                pots.push(next_state);
-            } else {
-                pots.push(0);
-            }
-        }
-        if pots.last() == Some(&1) {
-            pots.push(0);
         }
         self.pots = pots;
     }
