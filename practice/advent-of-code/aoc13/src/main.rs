@@ -1,9 +1,10 @@
-use std::{io::{self, Read, Write}, vec};
+use std::io::{self, Read, Write};
 use std::error::Error;
+use std::mem;
 use std::result;
 use std::str::FromStr;
-use std::time::Instant;
 use std::collections::HashSet;
+use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
 macro_rules! err {
@@ -16,17 +17,23 @@ fn main() -> Result<()>{
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
     let mut map: Map = input.parse()?;
-    // loop {
-    for _ in 0..120 {
-        if let Some(location) = map.location_of_crash() {
-            writeln!(io::stdout(), "the location of the first crash: {},{}", location.1, location.0)?;
-            // writeln!(io::stdout(), "tick: {}\n{}\n", map.tick, map.string())?;
-
+    loop {
+        let crashes = map.next()?;
+        if !crashes.is_empty() {
+            let c = crashes[0];
+            writeln!(io::stdout(), "the location of the first crash: {},{}", c.1, c.0)?;
             break;
-        } else {
-            map.next()?;
         }
-        writeln!(io::stdout(), "tick: {}\n{}\n", map.tick, map.string())?;
+    }
+
+
+    loop {
+        map.next()?;
+        if map.carts.len() == 1 {
+            let (&last_cart, _) = map.carts.clone().iter().next().unwrap();
+            writeln!(io::stdout(), "the location of the last cart: {},{}", last_cart.1, last_cart.0)?;
+            break;
+        }
     }
 
     Ok(())
@@ -55,20 +62,21 @@ impl Track {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Direction {
     Left,
     Right,
     Up,
-    Down
+    Down,
+    Crashed,
 }
 
-type Location = (usize, usize);
+type Coordinate = (usize, usize);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cart {
     direction: Direction,
-    location: Location,
+    coord: Coordinate,
     turn_times: u32
 }
 
@@ -77,7 +85,7 @@ impl Cart {
     fn new(c: char, i: usize, j: usize) -> Option<Self> {
         use crate::Direction::*;
         
-        let location = (i, j);
+        let coord = (i, j);
         let direction;
         let turn_times = 0;
         match c {
@@ -87,7 +95,7 @@ impl Cart {
             'v' => direction = Down,
             _ => return None,
         }
-        Some(Cart { direction, location, turn_times })
+        Some(Cart { direction, coord, turn_times })
     }
 
     fn turn(&mut self, direction: Direction) {
@@ -117,6 +125,10 @@ impl Cart {
             _ => unreachable!()
         }
     }
+
+    fn is_crashed(&self) -> bool {
+        self.direction == Direction::Crashed
+    }
 }
 
 
@@ -133,49 +145,49 @@ impl Grid {
     }
     
     fn up(&self, cart: &mut Cart) -> Result<&Track> {
-        let coord = cart.location;
+        let coord = cart.coord;
         if coord.0 == 0 {
             err!("cannot go up")
         } else {
             match &self.tracks[coord.0 - 1][coord.1] {
                 Track::Empty => return err!("cannot go up"),
-                d => { cart.location.0 -= 1; return Ok(d) },
+                d => { cart.coord.0 -= 1; return Ok(d) },
             }
         }
     }
 
     fn down(&self, cart: &mut Cart) -> Result<&Track> {
-        let coord = cart.location;
+        let coord = cart.coord;
         if coord.0 == self.tracks.len() - 1 {
             err!("cannot go down")
         } else {
             match &self.tracks[coord.0 + 1][coord.1] {
                 Track::Empty => return err!("cannot go down"),
-                d => { cart.location.0 += 1; return Ok(d) },
+                d => { cart.coord.0 += 1; return Ok(d) },
             }
         }
     }
 
     fn left(&self, cart: &mut Cart) -> Result<&Track> {
-        let coord = cart.location;
+        let coord = cart.coord;
         if coord.1 == 0 {
             err!("cannot go left")
         } else {
             match &self.tracks[coord.0][coord.1 - 1] {
                 Track::Empty => return err!("cannot go left"),
-                d => { cart.location.1 -= 1; return Ok(d) },
+                d => { cart.coord.1 -= 1; return Ok(d) },
             }
         }
     }
 
     fn right(&self, cart: &mut Cart) -> Result<&Track> {
-        let coord = cart.location;
+        let coord = cart.coord;
         if coord.1 == self.tracks[coord.0].len() - 1 {
             err!("cannot go right")
         } else {
             match &self.tracks[coord.0][coord.1 + 1] {
                 Track::Empty => return err!("cannot go right"),
-                d => { cart.location.1 += 1; return Ok(d) },
+                d => { cart.coord.1 += 1; return Ok(d) },
             }
         }
     }
@@ -184,7 +196,7 @@ impl Grid {
 #[derive(Debug)]
 struct Map {
     grid: Grid,
-    carts: Vec<Cart>,
+    carts: BTreeMap<Coordinate, Cart>,
     tick: u32
 }
 
@@ -192,37 +204,39 @@ impl Map {
     fn new() -> Self {
         Self {
             grid: Grid::new(),
-            carts: Vec::new(),
+            carts: BTreeMap::new(),
             tick: 0,
         }
     }
 
-    fn next(&mut self) -> Result<()> {
+    fn next(&mut self) -> Result<Vec<Coordinate>> {
         use crate::Direction::*;
         use crate::Track::*;
 
-        self.carts.sort_by(
-            |c1, c2| 
-            if c1.location.0 != c1.location.0 { c1.location.0.cmp(&c2.location.0) } 
-            else { c1.location.1.cmp(&c2.location.1)});
-        for cart in &mut self.carts {
-            let cur = cart.location;
+        let mut crashes = HashSet::new();
+        let mut previous_carts = mem::replace(&mut self.carts, BTreeMap::new());
+        
+        for (cur, mut cart) in previous_carts.clone() {
+            if crashes.contains(&cur) {
+                continue;
+            }
             let track = &self.grid.tracks[cur.0][cur.1];
-
             let next_track = match (&cart.direction, track) {
                 (_, Empty) => return err!("invalid transition on empty"),
+                (Crashed, _) => track,
                 (Left, Vertical) => return err!("cannot go up on vertical"),
-                (Left, _) => self.grid.left(cart)?,
+                (Left, _) => self.grid.left(&mut cart)?,
                 (Right, Vertical) => return err!("cannot go up on vertical"),
-                (Right, _) => self.grid.right(cart)?,
+                (Right, _) => self.grid.right(&mut cart)?,
                 (Up, Horizontal) => return err!("cannot go up on horizontal"),
-                (Up, _) => self.grid.up(cart)?,
+                (Up, _) => self.grid.up(&mut cart)?,
                 (Down, Horizontal) => return err!("cannot go down on horizontal"),
-                (Down, _) => self.grid.down(cart)?,
+                (Down, _) => self.grid.down(&mut cart)?,
             };
 
             match (&cart.direction, next_track) {
                 (_, Empty) => return err!("invalid transition on empty"),
+                (Crashed, _) => (),
                 (_, Intersection) => cart.intersection(),
                 (Left, Vertical) => (),
                 (Left, Horizontal) => (),
@@ -241,24 +255,19 @@ impl Map {
                 (Down, Forward) => cart.direction = Left,
                 (Down, Backward) => cart.direction = Right, 
             }
+            let next = cart.coord;
+            assert!(!cart.is_crashed());
+            if previous_carts.contains_key(&next) || self.carts.contains_key(&next) {
+                self.carts.remove(&next);
+                crashes.insert(next);
+            } else {
+                assert!(!self.carts.contains_key(&next));
+                self.carts.insert(next, cart);
+            }
+            previous_carts.remove(&cur);
         }
         self.tick += 1;
-        Ok(())
-    }
-
-    fn location_of_crash(&mut self) -> Option<Location> {
-        let mut cart_location: HashSet<Location> = HashSet::new();
-        self.carts.sort_by(
-            |c1, c2| 
-            if c1.location.0 != c1.location.0 { c1.location.0.cmp(&c2.location.0) } 
-            else { c1.location.1.cmp(&c2.location.1)});
-        for cart in &self.carts {
-            if cart_location.contains(&cart.location) {
-                return Some(cart.location)
-            }
-            cart_location.insert(cart.location);
-        }
-        None
+        Ok(crashes.into_iter().collect())
     }
 
     fn string(&self) -> String {
@@ -275,8 +284,8 @@ impl Map {
                 Empty => ' '
             }
         ).collect()).collect();
-        for cart in &self.carts {
-            let p = cart.location;
+        for (_, cart) in &self.carts {
+            let p = cart.coord;
             if ['v', '^', '<', '>'].contains(&map[p.0][p.1]) {
                 map[p.0][p.1] = 'X'
             } else {
@@ -284,7 +293,8 @@ impl Map {
                     Left => '<',
                     Right => '>',
                     Up => '^',
-                    Down => 'v'
+                    Down => 'v',
+                    Crashed => 'X',
                 }
             }
         }
@@ -302,7 +312,7 @@ impl FromStr for Map {
             for (j, c) in line.chars().enumerate() {
                 map.grid.tracks[i].push(Track::new(c));
                 if let Some(c) = Cart::new(c, i, j) {
-                    map.carts.push(c);
+                    map.carts.insert((i, j), c);
                 }
             }
         }
