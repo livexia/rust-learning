@@ -22,22 +22,22 @@ fn main() -> Result<()>{
     
     let mut program: Program = input.parse()?;
 
-    part1(&mut program)?;
-    // part2(&mut program)?;
+    part1(&mut program, true, false)?;
+    part2(&mut program, true, false)?;
 
     Ok(())
 }
 
-fn part1(program: &mut Program) -> Result<()> {
+fn part1(program: &mut Program, optimize: bool, debug: bool) -> Result<()> {
     program.init(vec![0, 0, 0, 0, 0, 0]);
-    program.run()?;
+    program.run(optimize, debug)?;
     writeln!(io::stdout(), "part1 answer: {}", program.registers[0])?;
     Ok(())
 }
 
-fn part2(program: &mut Program) -> Result<()> {
+fn part2(program: &mut Program, optimize: bool, debug: bool) -> Result<()> {
     program.init(vec![1, 0, 0, 0, 0, 0]);
-    program.run()?;
+    program.run(optimize, debug)?;
     writeln!(io::stdout(), "part2 answer: {}", program.registers[0])?;
     Ok(())
 }
@@ -55,20 +55,24 @@ impl Program {
         self.registers = registers;
     }
 
-    fn run(&mut self) -> Result<()> {
+    fn run(&mut self, optimize: bool, debug: bool) -> Result<()> {
         let n = self.instructions.len();
 
         while self.ip.1 < n {
-            if self.ip.1 == 3 {
+            if self.ip.1 == 3 && optimize{
                 self.ip.1 = self.optimize();
                 continue;
             }
 
             self.registers[self.ip.0] = self.ip.1;
-            print!("ip={:?} {:?} {} ", self.ip, self.registers, self.instructions[self.ip.1]);
+            if debug {
+                print!("ip={:?} {:?} {} ", self.ip, self.registers, self.instructions[self.ip.1]);
+            }
             self.execute(self.ip.1)?;
             self.ip.1 = self.registers[self.ip.0] + 1;
-            println!(" {:?}", self.registers);
+            if debug {
+                println!(" {:?}", self.registers);
+            }
         }
 
         Ok(())
