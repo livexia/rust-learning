@@ -14,25 +14,10 @@ fn main() -> Result<()>{
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    let mut area: Area = input.parse()?;
+    let area: Area = input.parse()?;
 
     part1(area.clone())?;
-
-    // println!("{}", area);
-    for _ in 0..1000 {
-        area.step();
-    }
-    writeln!(
-        io::stdout(), 
-        "minute : {:4}, resource value: {}", 
-        area.minute, area.resource_value())?;
-    for _ in 0..1000 {
-        area.step();
-    }
-    writeln!(
-        io::stdout(), 
-        "minute : {:4}, resource value: {}", 
-        area.minute, area.resource_value())?;
+    part2(area.clone())?;
 
     Ok(())
 }
@@ -42,6 +27,17 @@ fn part1(mut area: Area) -> Result<()> {
         area.step();
     }
     writeln!(io::stdout(), "part1 answer: {}", area.resource_value())?;
+    Ok(())
+}
+
+fn part2(mut area: Area) -> Result<()> {
+    for _ in 0..416 {
+        area.step();
+    }
+    for _ in 0..(1000_000_000 - 416)%28 {
+        area.step();
+    }
+    writeln!(io::stdout(), "part2 answer: {}", area.resource_value())?;
     Ok(())
 }
 
