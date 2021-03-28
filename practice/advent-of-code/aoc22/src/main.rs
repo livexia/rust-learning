@@ -1,12 +1,8 @@
 use std::io::{self, Read, Write};
 use std::error::Error;
 use std::result;
-use std::fmt;
 use std::str::FromStr;
-use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::collections::HashSet;
-use std::iter::FromIterator;
 
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) };
