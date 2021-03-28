@@ -21,11 +21,18 @@ fn main() -> Result<()>{
     // println!("{}", area);
     for _ in 0..1000 {
         area.step();
-        writeln!(
-            io::stdout(), 
-            "minute : {:4}, resource value: {}", 
-            area.minute, area.resource_value())?;
     }
+    writeln!(
+        io::stdout(), 
+        "minute : {:4}, resource value: {}", 
+        area.minute, area.resource_value())?;
+    for _ in 0..1000 {
+        area.step();
+    }
+    writeln!(
+        io::stdout(), 
+        "minute : {:4}, resource value: {}", 
+        area.minute, area.resource_value())?;
 
     Ok(())
 }
