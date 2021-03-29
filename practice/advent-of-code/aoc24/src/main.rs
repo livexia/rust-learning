@@ -16,25 +16,62 @@ fn main() -> Result<()>{
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    let mut fight: Fight = input.parse()?;
-    
-    while !fight.is_end() {
+    let fight: Fight = input.parse()?;
+
+    part1(fight.clone())?;
+    part2(fight.clone())?;
+    Ok(())
+}
+
+fn part1(mut fight: Fight) -> Result<()> {
+    while fight.is_end().is_none() {
         // println!("{}", fight);
-        fight.attack()?;
+        fight.attack();
         // println!("");
     }
     writeln!(io::stdout(), "part1 answer: {}", fight.summary())?;
     Ok(())
 }
 
-impl Fight {
-    fn is_end(&self) -> bool {
-        for army in &self.armies {
-            if army.iter().fold(0, |sum, g| sum + g.units) == 0 {
-                return true;
+fn part2(fight: Fight) -> Result<()> {
+    for n in 0.. {
+        let mut fight = fight.clone();
+        fight.boost(n);
+        while fight.is_end().is_none() {
+            // println!("{}", fight);
+            if fight.attack() == 0 {
+                break;
             }
+            // println!("");
         }
-        false
+        match fight.is_end() {
+            Some(1) => {
+                writeln!(io::stdout(), "part2 answer: {}", fight.summary())?;
+                break;
+            },
+            // Some(0) => writeln!(io::stdout(), "boost: {}, remain: {}", n, fight.summary())?,
+            _ => ()
+        }
+    }
+    Ok(())
+}
+
+impl Fight {
+    fn boost(&mut self, n: u64) {
+        for group in &mut self.armies[0] {
+            group.damage += n;
+        }
+    }
+
+
+    fn is_end(&self) -> Option<usize> {
+        if self.armies[0].iter().fold(0, |sum, g| sum + g.units) == 0 {
+            return Some(0);
+        }
+        if self.armies[1].iter().fold(0, |sum, g| sum + g.units) == 0 {
+            return Some(1);
+        }
+        None
     }
 
     fn summary(&self) -> u64 {
@@ -45,9 +82,10 @@ impl Fight {
         sum
     }
 
-    fn attack(&mut self) -> Result<()> {
+    fn attack(&mut self) -> u64 {
         let attack_order = self.target_selection();
-    
+        
+        let mut killed = 0;
         for (kind, i, j) in attack_order {
             let attacker = &self.armies[kind][i];
             let mut damage = attacker.units * attacker.damage;
@@ -63,9 +101,10 @@ impl Fight {
             //     1 => println!("Infection group {} attacks defending group {}, killing {} units", i+1, j+1, damage / hp),
             //     _ => ()
             // }
+            killed += damage / hp;
             self.armies[1 - kind][j].units = units.saturating_sub(damage / hp);
         }
-        Ok(())
+        killed
     }
 
     fn target_selection<'a>(&'a mut self) -> Vec<(usize, usize, usize)> {
@@ -198,14 +237,14 @@ impl fmt::Display for Fight {
         for i in 1..=self.armies[0].len() {
             let group = &self.armies[0][i-1];
             if group.units != 0 {
-                writeln!(f, "Group {} contains {} units", i, group.units)?;
+                writeln!(f, "{} {:?}", i, group)?;
             }
         }
         writeln!(f, "Infection:")?;
         for i in 1..=self.armies[1].len() {
             let group = &self.armies[1][i-1];
             if group.units != 0 {
-                writeln!(f, "Group {} contains {} units", i, group.units)?;
+                writeln!(f, "{} {:?}", i, group)?;
             }
         }
         Ok(())
@@ -259,7 +298,7 @@ impl FromStr for Group {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Fight {
     armies: Vec<Vec<Group>>,
 }
