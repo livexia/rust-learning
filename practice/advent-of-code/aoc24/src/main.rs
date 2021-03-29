@@ -97,7 +97,6 @@ impl Fight {
 
         for i in 0..n {
             let attacker = &attackers[i];
-            let mut target = m + 1;
             if attacker.units == 0{
                 continue;
             }
@@ -105,11 +104,8 @@ impl Fight {
             let mut defending_groups: Vec<usize> = vec![];
             let mut max_damage = 0;
             for j in 0..m {
-                if chosen.contains(&j) {
-                    continue;
-                }
                 let defender = &defenders[j];
-                if defender.units == 0{
+                if chosen.contains(&j) || defender.units == 0 {
                     continue;
                 }
                 if defender.immunities.contains(&attacker.attack_type) {
@@ -127,37 +123,14 @@ impl Fight {
                     defending_groups.push(j);
                 }
             }
-            if defending_groups.len() == 1 {
-                target = defending_groups[0];
-            } else if defending_groups.len() > 1 {
-                let mut max_effective_power = 0;
-                let mut defending_groups2 = vec![];
-                for j in defending_groups {
-                    let defender = &defenders[j];
-                    let effective_power = defender.units * defender.damage;
-                    if effective_power > max_effective_power {
-                        max_effective_power = effective_power;
-                        defending_groups2.clear();
-                        defending_groups2.push(j);
-                    } else if effective_power == max_effective_power {
-                        defending_groups2.push(j);
-                    }
-                }
-                if defending_groups2.len() == 1 {
-                    target = defending_groups2[0];
-                } else if defending_groups2.len() > 1 {
-                    let mut max_initiative = 0;
-                    for j in defending_groups2 {
-                        if defenders[j].initiative > max_initiative {
-                            target = j;
-                            max_initiative = defenders[j].initiative;
-                        }
-                    }
-                }
-            }
-            if target == m + 1 {
+            if defending_groups.is_empty() {
                 continue;
             }
+
+            let target = defending_groups
+                .into_iter()
+                .max_by(|&a, &b| defenders[b].cmp(&defenders[a]))
+                .unwrap();
             chosen.insert(target);
             attack_order.push((i, target));
         }
