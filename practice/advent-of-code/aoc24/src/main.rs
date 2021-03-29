@@ -112,7 +112,7 @@ impl Fight {
                 if defender.units == 0{
                     continue;
                 }
-                if attacker.immunities.contains(&defender.attack_type) {
+                if defender.immunities.contains(&attacker.attack_type) {
                     continue;
                 }
                 let mut damage = effective_power;
@@ -129,7 +129,7 @@ impl Fight {
             }
             if defending_groups.len() == 1 {
                 target = defending_groups[0];
-            } else {
+            } else if defending_groups.len() > 1 {
                 let mut max_effective_power = 0;
                 let mut defending_groups2 = vec![];
                 for j in defending_groups {
@@ -145,16 +145,14 @@ impl Fight {
                 }
                 if defending_groups2.len() == 1 {
                     target = defending_groups2[0];
-                } else {
+                } else if defending_groups2.len() > 1 {
                     let mut max_initiative = 0;
-                    let mut target2 = m + 1;
                     for j in defending_groups2 {
                         if defenders[j].initiative > max_initiative {
-                            target2 = j;
+                            target = j;
                             max_initiative = defenders[j].initiative;
                         }
                     }
-                    target = target2;
                 }
             }
             if target == m + 1 {
@@ -164,73 +162,6 @@ impl Fight {
             attack_order.push((i, target));
         }
         attack_order
-    }
-
-    fn chosen_by_damage(&self, attacker: &Group, defenders: &Vec<Group>, chosen: HashSet<usize>) -> usize{
-        let n = defenders.len();
-        let mut target = (n + 1);
-        let mut count = 0;
-        let effective_power = attacker.units * attacker.damage;
-        let mut damage = attacker.units * attacker.damage;
-        let mut max_damage = 0;
-        for i in 0..n {
-            if chosen.contains(&i) {
-                continue;
-            }
-            let defender = &defenders[i];
-            if defender.units == 0 {
-                continue;
-            }
-            if defender.weaknesses.contains(&attacker.attack_type) {
-                damage = effective_power * 2;
-            }
-            if damage > max_damage {
-                count = 1;
-                target = i;
-                max_damage = damage;
-                continue;
-            }
-            if damage == max_damage { 
-                count += 1
-            }
-        }
-        target
-    }
-
-    fn chosen_by_effective_power(&self, defenders: &Vec<Group>, chosen: HashSet<usize>) -> usize{
-        let n = defenders.len();
-        for i in 0..n {
-            if chosen.contains(&i) {
-                continue;
-            } 
-            let defender = &defenders[i];
-            if defender.units == 0 {
-                continue;
-            }
-            return i;
-        }
-        n + 1
-    }
-
-
-    fn chosen_by_initiative(&self, defenders: &Vec<Group>, chosen: HashSet<usize>) -> usize{
-        let n = defenders.len();
-        let mut target = n + 1;
-        let mut max_initiative = 0;
-        for i in 0..n {
-            if chosen.contains(&i) {
-                continue;
-            }
-            let defender = &defenders[i];
-            if defender.units == 0 {
-                continue;
-            }
-            if defenders[i].initiative > max_initiative {
-                max_initiative = defenders[i].initiative;
-                target = i;
-            }
-        }
-        target
     }
 }
 
