@@ -58,35 +58,36 @@ impl Program {
         let n = self.instructions.len();
         let mut count: u64 = 0;
         let mut seen = HashSet::new();
-        let mut cycle = vec![];
-
-        while self.ip.1 < n {
+        let mut cycle = 0;
+        let mut ip = self.ip.1;
+        let ip_reg = self.ip.0;
+        while ip < n {
             count += 1;
-            self.registers[self.ip.0] = self.ip.1;
+            self.registers[ip_reg] = ip;
 
-            if self.ip.1 == 28 {
+            if ip == 28 {
                 if seen.contains(&self.registers[5]) {
                     break;
                 }
                 seen.insert(self.registers[5]);
-                cycle.push(self.registers[5]);
+                cycle = self.registers[5];
             }
 
             if debug {
                 write!(
                     io::stdout(), 
-                    "ip={:?} {:?} {} ", 
-                    self.ip, self.registers, self.instructions[self.ip.1])?;
+                    "ip={} {:?} {} ", 
+                    ip, self.registers, self.instructions[ip])?;
             }
-            self.execute(self.ip.1)?;
-            self.ip.1 = self.registers[self.ip.0] + 1;
+            self.execute(ip)?;
+            ip = self.registers[ip_reg] + 1;
             if debug {
                 writeln!(io::stdout(), " {:?}", self.registers)?;
             }
         }
         writeln!(io::stdout(), "executing {} instructions", count)?;
 
-        Ok(*cycle.last().unwrap())
+        Ok(cycle)
     }
 
     fn execute(&mut self, ip: usize) -> Result<()> {
