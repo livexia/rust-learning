@@ -3,6 +3,7 @@ use std::error::Error;
 use std::fmt;
 use std::result;
 use std::str::FromStr;
+use std::collections::HashSet;
 
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) };
@@ -20,23 +21,23 @@ fn main() -> Result<()>{
     
     let mut program: Program = input.parse()?;
 
-    part1(&mut program, true)?;
-    // part2(&mut program, false)?;
+    part1(&mut program, false)?;
+    part2(&mut program, false)?;
 
     Ok(())
 }
 
 fn part1(program: &mut Program, debug: bool) -> Result<()> {
-    program.init(vec![200000, 0, 0, 0, 0, 0]);
+    program.init(vec![16457176, 0, 0, 0, 0, 0]);
     program.run(debug)?;
     writeln!(io::stdout(), "part1 answer: {}", program.registers[0])?;
     Ok(())
 }
 
 fn part2(program: &mut Program, debug: bool) -> Result<()> {
-    program.init(vec![1, 0, 0, 0, 0, 0]);
-    program.run(debug)?;
-    writeln!(io::stdout(), "part2 answer: {}", program.registers[0])?;
+    program.init(vec![0, 0, 0, 0, 0, 0]);
+    let answer = program.run(debug)?;
+    writeln!(io::stdout(), "part2 answer: {}", answer)?;
     Ok(())
 }
 
@@ -53,116 +54,64 @@ impl Program {
         self.registers = registers;
     }
 
-    fn run(&mut self, debug: bool) -> Result<()> {
+    fn run(&mut self, debug: bool) -> Result<usize> {
         let n = self.instructions.len();
-        let mut count = 0;
+        let mut count: u64 = 0;
+        let mut seen = HashSet::new();
+        let mut cycle = vec![];
 
         while self.ip.1 < n {
+            count += 1;
             self.registers[self.ip.0] = self.ip.1;
+
+            if self.ip.1 == 28 {
+                if seen.contains(&self.registers[5]) {
+                    break;
+                }
+                seen.insert(self.registers[5]);
+                cycle.push(self.registers[5]);
+            }
+
             if debug {
-                print!("ip={:?} {:?} {} ", self.ip, self.registers, self.instructions[self.ip.1]);
+                write!(
+                    io::stdout(), 
+                    "ip={:?} {:?} {} ", 
+                    self.ip, self.registers, self.instructions[self.ip.1])?;
             }
             self.execute(self.ip.1)?;
             self.ip.1 = self.registers[self.ip.0] + 1;
             if debug {
-                println!(" {:?}", self.registers);
-            }
-            count += 1;
-            if count > 40 {
-                break;
+                writeln!(io::stdout(), " {:?}", self.registers)?;
             }
         }
+        writeln!(io::stdout(), "executing {} instructions", count)?;
 
-        Ok(())
+        Ok(*cycle.last().unwrap())
     }
 
     fn execute(&mut self, ip: usize) -> Result<()> {
         let instr = &self.instructions[ip];
         let (op, a, b, c) = (instr.op.clone(), instr.op1, instr.op2, instr.output);
-        match op.as_str() {
-            "addr" => self.addr(a as Register, b as Register, c),
-            "addi" => self.addi(a as Register, b, c),
-            "mulr" => self.mulr(a as Register, b as Register, c),
-            "muli" => self.muli(a as Register, b, c),
-            "banr" => self.banr(a as Register, b as Register, c),
-            "bani" => self.bani(a as Register, b, c),
-            "borr" => self.borr(a as Register, b as Register, c),
-            "bori" => self.bori(a as Register, b, c),
-            "setr" => self.setr(a as Register, c),
-            "seti" => self.seti(a, c),
-            "gtri" => self.gtri(a as Register, b, c),
-            "gtir" => self.gtir(a, b as Register, c),
-            "gtrr" => self.gtrr(a as Register, b as Register, c),
-            "eqri" => self.eqri(a as Register, b, c),
-            "eqir" => self.eqir(a, b as Register, c),
-            "eqrr" => self.eqrr(a as Register, b as Register, c),
+        self.registers[c] = match op.as_str() {
+            "addr" => self.registers[a] + self.registers[b],
+            "addi" => b + self.registers[a],
+            "mulr" => self.registers[a] * self.registers[b],
+            "muli" => b * self.registers[a],
+            "banr" => self.registers[a] & self.registers[b],
+            "bani" => b & self.registers[a],
+            "borr" => self.registers[a] | self.registers[b],
+            "bori" => self.registers[a] | b,
+            "setr" => self.registers[a],
+            "seti" => a,
+            "gtri" => if self.registers[a] > b { 1 } else { 0 },
+            "gtir" => if a > self.registers[b] { 1 } else { 0 },
+            "gtrr" => if self.registers[a] > self.registers[b] { 1 } else { 0 },
+            "eqri" => if self.registers[a] == b { 1 } else { 0 },
+            "eqir" => if a == self.registers[b] { 1 } else { 0 },
+            "eqrr" => if self.registers[a] == self.registers[b] { 1 } else { 0 },
             _ => return err!("wrong instruction: {}", instr),
-        }
+        };
         Ok(())
-    }
-
-    fn addr(&mut self, a: Register, b: Register, c: Register) {
-        self.registers[c] = self.registers[a] + self.registers[b]
-    }
-    
-    fn addi(&mut self, a: Register, b: Value, c: Register) {
-        self.registers[c] = b + self.registers[a]
-    }
-    
-    fn mulr(&mut self, a: Register, b: Register, c: Register) {
-        self.registers[c] = self.registers[a] * self.registers[b]
-    }
-    
-    fn muli(&mut self, a: Register, b: Value, c: Register) {
-        self.registers[c] = b * self.registers[a]
-    }
-    
-    fn banr(&mut self, a: Register, b: Register, c: Register) {
-        self.registers[c] = self.registers[a] & self.registers[b]
-    }
-    
-    fn bani(&mut self, a: Register, b: Value, c: Register) {
-        self.registers[c] = b & self.registers[a]
-    }
-    
-    fn borr(&mut self, a: Register, b: Register, c: Register) {
-        self.registers[c] = self.registers[a] | self.registers[b]
-    }
-    
-    fn bori(&mut self, a: Register, b: Value, c: Register) {
-        self.registers[c] = b | self.registers[a]
-    }
-    
-    fn setr(&mut self, a: Register, c: Register) {
-        self.registers[c] = self.registers[a]
-    }
-    
-    fn seti(&mut self, a: Value, c: Register) {
-        self.registers[c] = a
-    }
-    
-    fn gtir(&mut self, a: Value, b: Register, c: Register) {
-        self.registers[c] = if a > self.registers[b] { 1 } else { 0 }
-    }
-    
-    fn gtri(&mut self, a: Register, b: Value, c: Register) {
-        self.registers[c] = if self.registers[a] > b { 1 } else { 0 }
-    }
-    
-    fn gtrr(&mut self, a: Register, b: Register, c: Register) {
-        self.registers[c] = if self.registers[a] > self.registers[b] { 1 } else { 0 }
-    }
-    
-    fn eqir(&mut self, a: Value, b: Register, c: Register) {
-        self.registers[c] = if a == self.registers[b] { 1 } else { 0 }
-    }
-    
-    fn eqri(&mut self, a: Register, b: Value, c: Register) {
-        self.registers[c] = if self.registers[a] == b { 1 } else { 0 }
-    }
-    
-    fn eqrr(&mut self, a: Register, b: Register, c: Register) {
-        self.registers[c] = if self.registers[a] == self.registers[b] { 1 } else { 0 }
     }
 }
 
