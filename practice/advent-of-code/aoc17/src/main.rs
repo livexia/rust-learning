@@ -21,21 +21,35 @@ fn main() -> Result<()>{
     let mut ground: Groud = input.parse()?;
 
     ground.flow()?;
-    println!("{}", ground);
-    println!("part1 answer: {}", ground.summary());
+    // println!("{}", ground);
+    println!("part1, reachable tiles: {}", ground.reach_able());
+    println!("part2, remaining water: {}", ground.remain_water());
 
     Ok(())
 }
 
 impl Groud {
-    fn summary(&self) -> i32 {
-        self.grid.iter().filter(|(&c, _)| !self.is_illegal(c)).fold(0, |sum, (_, &k)| {
-            if k == Kind::FlowWater || k == Kind::RestWater {
-                sum + 1
-            } else {
-                sum
-            }
-        })
+    fn reach_able(&self) -> i32 {
+        self.grid.iter()
+            .filter(|(&c, _)| !self.is_illegal(c) && c.y <= self.y_range.1 && c.y >= self.y_range.0 )
+            .fold(0, |sum, (_, &k)| {
+                if k == Kind::FlowWater || k == Kind::RestWater {
+                    sum + 1
+                } else {
+                    sum
+                }
+            })
+    }
+    fn remain_water(&self) -> i32 {
+        self.grid.iter()
+            .filter(|(&c, _)| !self.is_illegal(c) && c.y <= self.y_range.1 && c.y >= self.y_range.0 )
+            .fold(0, |sum, (_, &k)| {
+                if k == Kind::RestWater {
+                    sum + 1
+                } else {
+                    sum
+                }
+            })
     }
 
     fn flow(&mut self) -> Result<()> {
@@ -82,7 +96,7 @@ impl Groud {
             if count % 1000000 == 0 {
                 // println!("{}\n", self);
                 println!("down: {:?}\nvertical: {:?}", down, vertical);
-                println!("water: {:?}", self.summary());
+                println!("water: {:?}", self.reach_able());
             }
         }
         Ok(())
@@ -175,6 +189,7 @@ impl Groud {
 struct Groud {
     min_coord: Coordinate,
     max_coord: Coordinate,
+    y_range: (i32, i32),
     grid: BTreeMap<Coordinate, Kind>
 }
 
@@ -212,8 +227,6 @@ impl FromStr for Groud {
         let mut min_coord = Coordinate::new(500, 0);
         let mut max_coord = Coordinate::new(500, 0);
         let mut grid = BTreeMap::new();
-        let source = Coordinate::new(500, 0);
-        grid.insert(source, Kind::Source);
         for line in s.lines() {
             let parts: Vec<&str> = line.trim().split(", ").collect();
             if parts.len() != 2 {
@@ -230,8 +243,8 @@ impl FromStr for Groud {
             let end = range[1].parse()?;
             match fix {
                 "x" => {
-                    min_coord.x = min_coord.x.min(value - 1);
-                    max_coord.x = max_coord.x.max(value + 1);
+                    min_coord.x = min_coord.x.min(value - 2);
+                    max_coord.x = max_coord.x.max(value + 2);
                     min_coord.y = min_coord.y.min(start);
                     max_coord.y = max_coord.y.max(end);
                     for y in start..=end {
@@ -239,8 +252,8 @@ impl FromStr for Groud {
                     }
                 },
                 "y" => {
-                    min_coord.x = min_coord.x.min(start - 1);
-                    max_coord.x = max_coord.x.max(end + 1);
+                    min_coord.x = min_coord.x.min(start - 2);
+                    max_coord.x = max_coord.x.max(end + 2);
                     min_coord.y = min_coord.y.min(value);
                     max_coord.y = max_coord.y.max(value);
                     for x in start..=end {
@@ -250,7 +263,14 @@ impl FromStr for Groud {
                 _ => ()
             }
         }
-        Ok(Self { min_coord, max_coord, grid })
+        let min_y = grid.iter()
+            .map(|(c,_)| c.y).min().unwrap();
+        let max_y = grid.iter()
+                .map(|(c,_)| c.y).max().unwrap();
+        let y_range = (min_y, max_y);
+        let source = Coordinate::new(500, 0);
+        grid.insert(source, Kind::Source);
+        Ok(Self { min_coord, max_coord, y_range, grid })
     }
 }
 
