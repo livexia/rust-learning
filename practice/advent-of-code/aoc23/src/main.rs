@@ -4,12 +4,8 @@ extern crate lazy_static;
 use std::io::{self, Read, Write};
 use std::error::Error;
 use std::result;
-use std::fmt;
 use std::str::FromStr;
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::collections::HashSet;
-use std::iter::FromIterator;
+use std::collections::BinaryHeap;
 
 use regex::Regex;
 
@@ -47,77 +43,60 @@ fn part1(nanobots: &Vec<Nanobot>) -> Result<()> {
 }
 
 fn part2(nanobots: &Vec<Nanobot>) -> Result<()> {
-    let my_pos = Position{ x: 0, y: 0, z: 0 };
-    let (mut min_x, mut min_y, mut min_z, mut max_x, mut max_y, mut max_z) = (0, 0, 0, 0 ,0 ,0);
+
+    // let mut queue: BinaryHeap<(u64, i32)> = BinaryHeap::new();
+    let mut queue = vec![];
     for bot in nanobots {
-        min_x = min_x.min(bot.pos.x);
-        min_y = min_y.min(bot.pos.y);
-        min_z = min_z.min(bot.pos.z);
-        max_x = max_x.max(bot.pos.x);
-        max_y = max_y.max(bot.pos.y);
-        max_z = max_z.max(bot.pos.z);
+        let d: u64 = vec![bot.pos.x, bot.pos.y, bot.pos.z].iter().map(|x| x.abs() as u64).sum();
+        queue.push((d.saturating_sub(bot.radius), 1));
+        queue.push((d + bot.radius + 1, -1));
     }
-
-    let max_nanobot = &nanobots[0];
-    println!("{:?}", max_nanobot);
-
-
-    min_x = max_nanobot.pos.x - max_nanobot.radius;
-    min_y = max_nanobot.pos.y - max_nanobot.radius;
-    min_z = max_nanobot.pos.z - max_nanobot.radius;
-    max_x = max_nanobot.pos.x + max_nanobot.radius;
-    max_y = max_nanobot.pos.y + max_nanobot.radius;
-    max_z = max_nanobot.pos.z + max_nanobot.radius;
-
-    let mut max = 0;
-    for x in min_x..max_x {
-        for y in min_y..max_y {
-            for z in min_z..max_z {
-                let mut sum = 0;
-                let pos = Position { x, y, z };
-                if !max_nanobot.in_range(&pos) {
-                    continue;
-                }
-                for bot in nanobots {
-                    if bot.in_range(&pos) {
-                        sum += 1;
-                    }
-                }
-                if max < sum {
-                    println!("{:?}", pos);
-                    max = sum;
-                }
-            }
+    queue.sort();
+    queue.reverse();
+    let mut count = 0;
+    let mut max_count = 0;
+    let mut answer = 0;
+    while !queue.is_empty() {
+        let (dist, e )= queue.pop().unwrap();
+        count += e;
+        println!("{}, {}", dist, e);
+        if count > max_count {
+            answer = dist;
+            max_count = count;
         }
-    }    
-    writeln!(io::stdout(), "part2 answer: {}", max)?;
+    }
+    writeln!(io::stdout(), "part2 answer: {}", answer)?;
     Ok(())
 }
 
 #[derive(Debug)]
-struct Position {
+struct Coordinate {
     x: i32,
     y: i32,
     z: i32,
 }
 
-impl Position {
-    fn distance(&self, other: &Self) -> i32 {
-        let mut d = (self.x - other.x).abs();
-        d += (self.y - other.y).abs();
-        d += (self.z - other.z).abs();
+impl Coordinate {
+    fn new(x: i32, y: i32, z: i32) -> Self {
+        Self { x, y, z }
+    }
+
+    fn distance(&self, other: &Self) -> u64 {
+        let mut d = (self.x - other.x).abs() as u64;
+        d += (self.y - other.y).abs() as u64;
+        d += (self.z - other.z).abs() as u64;
         d
     }
 }
 
 #[derive(Debug)]
 struct Nanobot {
-    pos: Position,
-    radius: i32,
+    pos: Coordinate,
+    radius: u64,
 }
 
 impl Nanobot {
-    fn in_range(&self, pos: &Position) -> bool {
+    fn in_range(&self, pos: &Coordinate) -> bool {
         if self.pos.distance(pos) <= self.radius {
             true
         } else {
@@ -139,7 +118,7 @@ impl FromStr for Nanobot {
             None => return err!("unrecognized nannobot"),
             Some(caps) => caps,
         };
-        let pos = Position {
+        let pos = Coordinate {
             x: caps["x"].parse()?,
             y: caps["y"].parse()?,
             z: caps["z"].parse()?,
