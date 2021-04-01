@@ -6,7 +6,6 @@ use std::str::FromStr;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::collections::BinaryHeap;
-use std::collections::BTreeMap;
 
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) };
@@ -33,12 +32,10 @@ fn part1(cave: &Cave) -> Result<()> {
             if x == cave.target.x && y == cave.target.y {
                 continue;
             }
-            if let Some(region) = cave.regions.get(&Coordinate { x, y }) {
-                match region {
-                    Region::Rocky => (),
-                    Region::Narrow => risk_level += 2,
-                    Region::Wet => risk_level += 1,
-                }
+            match cave.regions[x][y] {
+                Region::Rocky => (),
+                Region::Narrow => risk_level += 2,
+                Region::Wet => risk_level += 1,
             }
         }
     }
@@ -60,12 +57,12 @@ enum Tool {
 
 #[derive(Debug)]
 struct Cave {
-    depth: i32,
+    depth: u64,
     target: Coordinate,
     bound: Coordinate,
-    regions: BTreeMap<Coordinate, Region>,
-    erosion: BTreeMap<Coordinate, i32>,
-    geologic: BTreeMap<Coordinate, i32>,
+    regions: Vec<Vec<Region>>,
+    erosion: Vec<Vec<u64>>,
+    geologic: Vec<Vec<u64>>,
 }
 
 impl Cave {
@@ -78,12 +75,15 @@ impl Cave {
                     depth: depth.parse()?,
                     target: target.parse()?,
                     bound: target.parse()?,
-                    regions: BTreeMap::new(),
-                    erosion: BTreeMap::new(),
-                    geologic: BTreeMap::new(),
+                    regions: Vec::new(),
+                    erosion: Vec::new(),
+                    geologic: Vec::new(),
                 };
-                cave.bound.x *= 2;
-                cave.bound.y *= 2;
+                cave.bound.x *= 15;
+                cave.bound.y *= 15;
+                cave.regions = vec![vec![Region::Rocky; cave.bound.y + 1]; cave.bound.x + 1];
+                cave.erosion = vec![vec![0; cave.bound.y + 1]; cave.bound.x + 1];
+                cave.geologic = vec![vec![0; cave.bound.y + 1]; cave.bound.x + 1];
                 cave.init()?;
                 return Ok(cave);
             } else {
@@ -95,62 +95,57 @@ impl Cave {
     }
 
     fn init(&mut self) -> Result<()> {
-        self.geologic.insert(Coordinate::new(0, 0), 0);
-        self.erosion.insert(Coordinate::new(0, 0), (0 + self.depth) % 20183);
-        self.geologic.insert(self.target, 0);
-        self.erosion.insert(self.target, (0 + self.depth) % 20183);
+        self.geologic[0][0] = 0;
+        self.erosion[0][0] = self.depth % 20183;
+        self.geologic[self.target.x][self.target.y] = 0;
+        self.erosion[self.target.x][self.target.y] = self.depth % 20183;
         for x in 0..=self.bound.x {
-            self.calc_geologic(&Coordinate::new(x, 0))?;
-            self.calc_erosion(&Coordinate::new(x, 0))?;
+            self.calc_geologic(x, 0)?;
+            self.calc_erosion(x, 0)?;
         }
         for y in 0..=self.bound.y {
-            self.calc_geologic(&Coordinate::new(0, y))?;
-            self.calc_erosion(&Coordinate::new(0, y))?;
+            self.calc_geologic(0, y)?;
+            self.calc_erosion(0, y)?;
         }
         for x in 1..=self.bound.x {
             for y in 1..=self.bound.y {
-                self.calc_geologic(&Coordinate::new(x, y))?;
-                self.calc_erosion(&Coordinate::new(x, y))?;
+                self.calc_geologic(x ,y)?;
+                self.calc_erosion(x, y)?;
             }
         }
-        for (&c, e) in &self.erosion {
-            match e % 3 {
-                0 => self.regions.insert(c, Region::Rocky),
-                1 => self.regions.insert(c, Region::Wet),
-                2 => self.regions.insert(c, Region::Narrow),
-                _ => return err!("wrong region kind, ersion: {}", e),
-            };
+        for x in 0..=self.bound.x {
+            for y in 0..=self.bound.y {
+                self.regions[x][y] = match self.erosion[x][y] % 3 {
+                    0 => Region::Rocky,
+                    1 => Region::Wet,
+                    2 => Region::Narrow,
+                    _ => return err!("wrong region kind, ersion: {}", self.erosion[x][y]),
+                };
+            }
         }
         Ok(())
     }
 
-    fn calc_geologic(&mut self, c: &Coordinate) -> Result<()> {
-        let geologic = if c.x == 0 {
-            c.y * 48271
-        } else if c.y == 0 {
-            c.x * 16807
+    fn calc_geologic(&mut self, x: usize, y: usize) -> Result<()> {
+        self.geologic[x][y] = if x == 0 {
+            y as u64 * 48271
+        } else if y == 0 {
+            x  as u64 * 16807
         } else {
-            self.erosion.get(&Coordinate { x: c.x - 1, ..c.clone()}).unwrap()
-                * self.erosion.get(&Coordinate { y: c.y - 1, ..c.clone()}).unwrap()
+            self.erosion[x - 1][y] * self.erosion[x][y - 1]
         };
-        self.geologic.insert(c.clone(), geologic);
         Ok(())
     }
 
-    fn calc_erosion(&mut self, c: &Coordinate) -> Result<()> {
-        let erosion = if let Some(geologic) = self.geologic.get(c) {
-            (geologic + self.depth) % 20183
-        } else {
-            return err!("can not find coordinat {:?} on the grid", c)
-        };
-        self.erosion.insert(c.clone(), erosion);
+    fn calc_erosion(&mut self, x: usize, y: usize) -> Result<()> {
+        self.erosion[x][y] = (self.geologic[x][y] + self.depth) % 20183;
         Ok(())
     }
 
     fn string(&self, me: &Coordinate) -> String {
         let mut result = String::new();
-        for y in 0..self.target.y+10 {
-            for x in 0..self.target.x+10 {
+        for y in 0..=self.bound.y {
+            for x in 0..=self.bound.x {
                 let cur = Coordinate::new(x, y);
                 if self.target == cur {
                     result.push_str("T");
@@ -159,7 +154,7 @@ impl Cave {
                 } else if me == &cur {
                     result.push_str("X");
                 } else {
-                    result.push_str(&format!("{}", self.regions.get(&cur).unwrap()));
+                    result.push_str(&format!("{}", self.regions[x][y]));
                 }
             }
             result.push_str("\n");
@@ -184,7 +179,7 @@ impl Cave {
             }
             
             for &e in &[Tool::Torch, Tool::ClimbingGear, Tool::Neither] {
-                if self.regions.get(&c).unwrap().can_equip(e) {
+                if self.regions[c.x][c.y].can_equip(e) {
                     queue.push(Reverse((time + 7, c, e)))
                 }
             }
@@ -193,12 +188,12 @@ impl Cave {
                     continue;
                 }
 
-                let x = (c.x as i64 + x) as i32;
-                let y = (c.y as i64 + y) as i32;
+                let x = (c.x as i64 + x) as usize;
+                let y = (c.y as i64 + y) as usize;
                 if x > self.bound.x || y > self.bound.y {
                     continue;
                 }
-                if self.regions.get(&Coordinate::new(x, y)).unwrap().can_equip(tool) {
+                if self.regions[x][y].can_equip(tool) {
                     let neighbor = Coordinate::new(x, y);
                     queue.push(Reverse((time + 1, neighbor, tool)));
                 }
@@ -249,12 +244,12 @@ impl fmt::Display for Region {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Coordinate {
-    x: i32,
-    y: i32,
+    x: usize,
+    y: usize,
 }
 
 impl Coordinate {
-    fn new(x: i32, y: i32) -> Self {
+    fn new(x: usize, y: usize) -> Self {
         Self{ x, y }
     }
 }
