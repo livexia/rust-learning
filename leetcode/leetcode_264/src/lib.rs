@@ -1,3 +1,5 @@
+#![feature(map_first_last)]
+
 /**
 给你一个整数 n ，请你找出并返回第 n 个 丑数 。
 
@@ -23,7 +25,6 @@
 
 use std::collections::BinaryHeap;
 use std::collections::HashSet;
-use std::collections::BTreeSet;
 use std::cmp::Reverse;
 
 pub fn nth_ugly_number(n: i32) -> i32 {
@@ -46,12 +47,45 @@ pub fn nth_ugly_number(n: i32) -> i32 {
     ugly as i32
 }
 
+use std::collections::BTreeSet;
+pub fn nth_ugly_number_btree_set(n: i32) -> i32 {
+    let factors = [2, 3, 5];
+    let mut btree: BTreeSet<i64> = BTreeSet::new();
+    btree.insert(1);
+    let mut ugly = 0;
+    for _ in 0..n {
+        let cur = btree.pop_first().unwrap();
+        ugly = cur;
+        for f in &factors {
+            btree.insert(f * ugly);
+        }
+    }
+    ugly as i32
+}
+
+pub fn nth_ugly_number_dp(n: i32) -> i32 {
+    let (mut p2, mut p3, mut p5) = (0, 0, 0);
+    let mut ret = vec![1];
+    for _ in 1..n as usize {
+        let &new = [ret[p2]*2, ret[p3]*3, ret[p5]*5].iter().min().unwrap();
+        ret.push(new);
+        if ret[p2] * 2 == new { p2 += 1 }
+        if ret[p3] * 3 == new { p3 += 1 }
+        if ret[p5] * 5 == new { p5 += 1 }
+    }
+    ret[n as usize - 1]
+}
+
 #[cfg(test)]
 mod tests {
     use crate::nth_ugly_number;
+    use crate::nth_ugly_number_btree_set;
+    use crate::nth_ugly_number_dp;
 
     #[test]
     fn it_works() {
         assert_eq!(nth_ugly_number(10), 12);
+        assert_eq!(nth_ugly_number_btree_set(10), 12);
+        assert_eq!(nth_ugly_number_dp(10), 12);
     }
 }
