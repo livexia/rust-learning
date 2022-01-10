@@ -1,3 +1,0 @@
-[submodule "rust-raspberrypi-OS-tutorials-note/rust-raspberrypi-OS-tutorials"]
-	path = rust-raspberrypi-OS-tutorials-note/rust-raspberrypi-OS-tutorials
-	url = https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials.git
