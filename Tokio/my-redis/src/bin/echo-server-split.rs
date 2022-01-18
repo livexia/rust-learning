@@ -3,6 +3,7 @@ use tokio::net::TcpStream;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    // use nc -l 6142 to open port
     let socket = TcpStream::connect("127.0.0.1:6142").await?;
     let (mut rd, mut wr) = io::split(socket);
 
