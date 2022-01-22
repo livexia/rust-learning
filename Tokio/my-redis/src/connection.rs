@@ -117,7 +117,7 @@ impl Connection {
             Frame::Array(_) => unimplemented!(),
         }
         
-        self.stream.flush().await;
+        self.stream.flush().await?;
 
         Ok(())
     }
