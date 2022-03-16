@@ -55,11 +55,15 @@ impl Delimiter for &str {
 }
 
 pub fn until_char(s: &str, c: char) -> &str {
-    StrSplit::new(s, c).next().unwrap()
+    StrSplit::new(s, c)
+        .next()
+        .expect("StrSplit always give at least on result")
 }
 
 pub fn until_string(s: &str, p: String) -> &str {
-    StrSplit::new(s, &p[..]).next().unwrap()
+    StrSplit::new(s, &p[..])
+        .next()
+        .expect("StrSplit always give at least on result")
 }
 
 #[cfg(test)]
