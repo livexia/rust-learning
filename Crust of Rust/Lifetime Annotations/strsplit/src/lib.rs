@@ -27,7 +27,7 @@ where
         /* https://gist.github.com/jonhoo/2a7fdcf79be03e51a5f95cd326f2a1e8?permalink_comment_id=3302571#gistcomment-3302571 */
         // let ref mut remainder = self.remainder?; // because haysatck is Copy, so self.remainder never changed
         // let remainder = &mut self.remainder?; // because haysatck is Copy, so self.remainder never changed
-        // as_mut() turn Option<T> into Option<&mut T>, even Copy, yields a mutable reference into the original Option 
+        // as_mut() turn Option<T> into Option<&mut T>, even Copy, yields a mutable reference into the original Option
         // if let Some(ref mut remainder) = self.remainder {
         if let Some((start, end)) = self.delimiter.find_next(remainder) {
             let until_delimiter = &remainder[..start];
@@ -44,7 +44,7 @@ impl Delimiter for char {
         s.char_indices()
             .position(|(_, c)| &c == self)
             // .map(|start| (start, start + 1))
-            .map(|start| (start, start + self.len_utf8()))   // use len_utf_8() to make sure use right char length
+            .map(|start| (start, start + self.len_utf8())) // use len_utf_8() to make sure use right char length
     }
 }
 
