@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! avec {
-    ($($elem: expr), *) => {{
+    ($($elem: expr), * $(,)?) => {{
         #[allow(unused_mut)]
         let mut v = Vec::new();
         $(v.push($elem);)*
@@ -25,6 +25,15 @@ fn single() {
 #[test]
 fn double() {
     let v: Vec<u32> = avec![5, 6];
+    assert!(!v.is_empty());
+    assert_eq!(v.len(), 2);
+    assert_eq!(v[0], 5);
+    assert_eq!(v[1], 6);
+}
+
+#[test]
+fn tailing() {
+    let v: Vec<u32> = avec![5, 6,];
     assert!(!v.is_empty());
     assert_eq!(v.len(), 2);
     assert_eq!(v[0], 5);
