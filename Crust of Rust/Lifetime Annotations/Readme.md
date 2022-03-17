@@ -19,6 +19,14 @@ March 16, 2022 8:00 PM 完成第二遍的视频记录，基本上第二遍视频
 
 **实践：实现一个StrSplit库。耗时1h。**
 
+**内容：**
+
+1. 如何使用lifetime标记，以及多个lifetime标记的使用和关系。
+2. 如何实现迭代器。
+3. 如何声明和实现Trait。
+4. Ref关键词。
+5. Option使用 ? 运算符和 as_mut()。
+
 **笔记：**
 
 1. [0:03:36](https://www.youtube.com/watch?v=rAl-9HwD858&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=1&t=216s) Rust Lints: [https://doc.rust-lang.org/rustc/lints/index.html](https://doc.rust-lang.org/rustc/lints/index.html)
@@ -112,11 +120,3 @@ March 16, 2022 8:00 PM 完成第二遍的视频记录，基本上第二遍视频
 27. [1:27:39](https://www.youtube.com/watch?v=rAl-9HwD858&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=1&t=5259s) Q&A
     1. Rust额外的特效的确让Rust代码更加难读。
     2. Rust标准库中的Split实现更加复杂和曲折。
-
-**总结：**
-
-1. 如何使用lifetime标记，以及多个lifetime标记的使用和关系。
-2. 如何实现迭代器。
-3. 如何声明和实现Trait。
-4. Ref关键词。
-5. Option使用 ? 运算符和 as_mut()。
