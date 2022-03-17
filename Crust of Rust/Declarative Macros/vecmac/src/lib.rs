@@ -39,3 +39,9 @@ fn tailing() {
     assert_eq!(v[0], 5);
     assert_eq!(v[1], 6);
 }
+
+/// ```compile_fail
+/// let v: Vec<u32> = vecmac::avec![,];
+/// ```
+#[allow(dead_code)]
+struct CompileFailEmptyTailing;
