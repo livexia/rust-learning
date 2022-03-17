@@ -1,14 +1,29 @@
 #[macro_export]
 macro_rules! hashmap {
     ($($key: expr => $value: expr), *) => {{
+        const C: usize = count!(@COUNT; $($key), *);
+        
         #[allow(unused_mut)]
-        let mut map = ::std::collections::HashMap::new();
+        let mut map = ::std::collections::HashMap::with_capacity(C);
         $(map.insert($key, $value);)*
         map
     }};
     ($($key: expr => $value: expr,)*) => {
         hashmap!{$($key => $value), *}
     };
+}
+
+
+
+// see: https://danielkeep.github.io/tlborm/book/blk-counting.html#slice-length
+// counting the element to avoid expensice grow of vector capacity
+#[macro_export]
+#[doc(hidden)]
+macro_rules! count {
+    (@SUBST; $_elem: tt) => { () };
+    (@COUNT; $($elem: tt), *) => {
+        <[()]>::len(&[$(count!(@SUBST; $elem)), *])
+    }
 }
 
 #[test]
