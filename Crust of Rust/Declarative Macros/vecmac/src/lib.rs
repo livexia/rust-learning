@@ -21,6 +21,7 @@ macro_rules! avec {
 // see: https://danielkeep.github.io/tlborm/book/blk-counting.html#slice-length
 // counting the element to avoid expensice grow of vector capacity
 #[macro_export]
+#[doc(hidden)]
 macro_rules! count {
     (@SUBST; $_elem: expr) => { () };   // use () to make sure there is no allocation
     (@COUNT; $($elem: expr), *) => {
