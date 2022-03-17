@@ -26,7 +26,6 @@ macro_rules! count {
     (@SUBST; $_elem: expr) => { () };   // use () to make sure there is no allocation
     (@COUNT; $($elem: expr), *) => {
         <[()]>::len(&[$(count!(@SUBST; $elem)), *])
-        // [$(count!(@SUBST; $elem)), *].len::<[()]>()
     }
 }
 
