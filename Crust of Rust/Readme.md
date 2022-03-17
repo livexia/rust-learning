@@ -4,9 +4,11 @@
 
 Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9DegC5cQQ)的一个直播系列，主要关注点在于Rust中较为重要的技术点，通过学习这个直播系列，我可以对Rust的知识点和技术点有更为完整的认知。
 
-播放列表链接：[**Crust of Rust**](https://www.youtube.com/watch?v=rAl-9HwD858&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa)
+**播放列表链接：[Crust of Rust](https://www.youtube.com/watch?v=rAl-9HwD858&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa)**
 
-**耗时：5h34min**
+**难度：中上水平**
+
+**耗时：10h54min**
 
 **进度：Crust of Rust: Declarative Macros**
 
