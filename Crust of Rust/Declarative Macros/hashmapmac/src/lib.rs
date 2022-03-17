@@ -2,7 +2,7 @@
 macro_rules! hashmap {
     ($($key: expr => $value: expr), *) => {{
         const C: usize = count!(@COUNT; $($key), *);
-        
+
         #[allow(unused_mut)]
         let mut map = ::std::collections::HashMap::with_capacity(C);
         $(map.insert($key, $value);)*
@@ -12,8 +12,6 @@ macro_rules! hashmap {
         hashmap!{$($key => $value), *}
     };
 }
-
-
 
 // see: https://danielkeep.github.io/tlborm/book/blk-counting.html#slice-length
 // counting the element to avoid expensice grow of vector capacity
