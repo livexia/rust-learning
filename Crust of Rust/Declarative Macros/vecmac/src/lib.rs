@@ -1,11 +1,14 @@
 #[macro_export]
 macro_rules! avec {
-    ($($elem: expr), * $(,)?) => {{
+    ($($elem: expr), *) => {{
         #[allow(unused_mut)]
         let mut v = Vec::new();
         $(v.push($elem);)*
         v
     }};
+    ($($elem: expr,) *) => {
+        $crate::avec!($($elem), *)
+    };
 }
 
 #[test]
@@ -41,6 +44,7 @@ fn tailing() {
 }
 
 /// ```compile_fail
+/// # should not allowed [,] to became a Vec
 /// let v: Vec<u32> = vecmac::avec![,];
 /// ```
 #[allow(dead_code)]
