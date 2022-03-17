@@ -9,6 +9,11 @@ macro_rules! avec {
     ($($elem: expr,) *) => {
         $crate::avec!($($elem), *)
     };
+    ($elem: expr; $count: expr) => {{
+        let mut v = Vec::new();
+        v.resize($count, $elem);
+        v
+    }}
 }
 
 #[test]
@@ -49,3 +54,30 @@ fn tailing() {
 /// ```
 #[allow(dead_code)]
 struct CompileFailEmptyTailing;
+
+#[test]
+fn clone() {
+    let v: Vec<u32> = avec![5; 2];
+    assert!(!v.is_empty());
+    assert_eq!(v.len(), 2);
+    assert_eq!(v[0], 5);
+    assert_eq!(v[1], 5);
+}
+
+#[test]
+fn clone_option() {
+    let mut x = Some(5);
+    let v: Vec<u32> = avec![x.take().unwrap(); 2];
+    assert!(!v.is_empty());
+    assert_eq!(v.len(), 2);
+    assert_eq!(v[0], 5);
+    assert_eq!(v[1], 5);
+}
+
+/// ```compile_fail
+/// # should not allowed not Clone type to became a Vec by using clone
+/// struct Foo;
+/// let v: Vec<Foo> = vecmac::avec![Foo; 2];
+/// ```
+#[allow(dead_code)]
+struct CompileFailClone;
