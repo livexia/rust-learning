@@ -14,7 +14,7 @@ macro_rules! hashmap {
 }
 
 // see: https://danielkeep.github.io/tlborm/book/blk-counting.html#slice-length
-// counting the element to avoid expensice grow of vector capacity
+// counting the element to avoid expensice grow of hashmap capacity
 #[macro_export]
 #[doc(hidden)]
 macro_rules! count {
