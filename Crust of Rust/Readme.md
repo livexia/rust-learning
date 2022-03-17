@@ -6,7 +6,7 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 
 **耗时：5h34min**
 
-**进度：Crust of Rust: Lifetime Annotations**
+**进度：Crust of Rust: Declarative Macros**
 
 ## 学习方法
 
@@ -15,3 +15,4 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 
 ## 学习记录
 1. [Crust of Rust: Lifetime Annotations](./Lifetime%20Annotations/Readme.md)
+2. [Crust of Rust: Declarative Macros](./Declarative%20Macros/Readme.md)
