@@ -1,8 +1,10 @@
 #[macro_export]
 macro_rules! avec {
     ($($elem: expr), *) => {{
+        let count = $crate::count!(@COUNT; $($elem: expr), *);
+
         #[allow(unused_mut)]
-        let mut v = Vec::new();
+        let mut v = Vec::with_capacity(count);
         $(v.push($elem);)*
         v
     }};
@@ -14,6 +16,17 @@ macro_rules! avec {
         v.resize($count, $elem);
         v
     }}
+}
+
+// see: https://danielkeep.github.io/tlborm/book/blk-counting.html#slice-length
+// counting the element to avoid expensice grow of vector capacity
+#[macro_export]
+macro_rules! count {
+    (@SUBST; $_elem: expr) => { () };   // use () to make sure there is no allocation
+    (@COUNT; $($elem: expr), *) => {
+        <[()]>::len(&[$(count!(@SUBST; $elem)), *])
+        // [$(count!(@SUBST; $elem)), *].len::<[()]>()
+    }
 }
 
 #[test]
