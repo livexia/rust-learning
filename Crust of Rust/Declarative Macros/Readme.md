@@ -4,7 +4,7 @@
 
 1. 1h36min，看完第一遍视频
 2. 54min，完成vecmac
-3. 
+3. 26min，完成hashmapmac
 
 **参考：**
 
@@ -14,10 +14,13 @@
 3. https://github.com/dtolnay/cargo-expand
 4. **[Documentation tests](https://doc.rust-lang.org/rustdoc/documentation-tests.html#documentation-tests)**
 5. ****[Slice length](https://danielkeep.github.io/tlborm/book/blk-counting.html#slice-length)****
-6. [https://gist.github.com/jonhoo/ec57882a976a2d2a92b3138ea25cd45a](https://gist.github.com/jonhoo/ec57882a976a2d2a92b3138ea25cd45a)
+6. ****[maplit](https://docs.rs/maplit/latest/maplit/index.html)****
+7. [https://gist.github.com/jonhoo/ec57882a976a2d2a92b3138ea25cd45a](https://gist.github.com/jonhoo/ec57882a976a2d2a92b3138ea25cd45a)
 
 **实践：vec macro**
 
 **加强实践：hashmap macro**
+
+参考：****[maplit](https://docs.rs/maplit/latest/maplit/index.html)****
 
 **笔记：**
