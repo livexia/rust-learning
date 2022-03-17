@@ -6,6 +6,9 @@ macro_rules! hashmap {
         $(map.insert($key, $value);)*
         map
     }};
+    ($($key: expr => $value: expr,)*) => {
+        hashmap!{$($key => $value), *}
+    };
 }
 
 #[test]
@@ -30,6 +33,19 @@ fn double_hashmap() {
     let map: HashMap<u32, char> = hashmap! {
         1 => 'a',
         2 => 'b'
+    };
+    assert!(!map.is_empty());
+    assert_eq!(map.len(), 2);
+    assert_eq!(map[&1], 'a');
+    assert_eq!(map[&2], 'b');
+}
+
+#[test]
+fn hashmap_trailing() {
+    use std::collections::HashMap;
+    let map: HashMap<u32, char> = hashmap! {
+        1 => 'a',
+        2 => 'b',
     };
     assert!(!map.is_empty());
     assert_eq!(map.len(), 2);
