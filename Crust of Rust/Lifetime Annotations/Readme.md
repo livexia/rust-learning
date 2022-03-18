@@ -1,25 +1,26 @@
-### **[Crust of Rust: Lifetime Annotations](https://youtu.be/rAl-9HwD858)**
+# **[Crust of Rust: Lifetime Annotations](https://youtu.be/rAl-9HwD858)**
 
-**方法：先看一遍视频，然后自己脱离视频实现视频中的演示内容，再重新看一遍视频。**
+## 方法
 
-**进度：5h34min，未完成**
+1. **先看一遍视频**
+2. **脱离视频实现视频中的演示内容**
+3. **代码说明**
+4. **再重新看一遍视频，对关键内容进行记录**
+5. **总结**
 
-March 15, 2022 10:00 PM 完成第一遍的视频观看，耗时 1h34min，没有做笔记。
+## 进度
 
-March 16, 2022 2:29 PM 实现基本脱离视频演示完成StrSplit。
+**总耗时： 5h34min**
 
-March 16, 2022 8:00 PM 完成第二遍的视频记录，基本上第二遍视频所需要的时间会翻倍，整体上这一期视频我花费了大致五个半小时，没有统计具体的时间，后续会进行统计。
+1. March 15, 2022 10:00 PM 完成第一遍的视频观看，耗时 1h34min，没有做笔记。
+2. March 16, 2022 2:29 PM 实现基本脱离视频演示完成StrSplit。
+3. March 16, 2022 8:00 PM 完成第二遍的视频记录，基本上第二遍视频所需要的时间会翻倍，整体上这一期视频我花费了大致五个半小时，没有统计具体的时间，后续会进行统计。
 
-**参考：**
+## 总结
 
-1. [https://gist.github.com/jonhoo/2a7fdcf79be03e51a5f95cd326f2a1e8](https://gist.github.com/jonhoo/2a7fdcf79be03e51a5f95cd326f2a1e8)
-2. **[Trait and lifetime bounds](https://doc.rust-lang.org/reference/trait-bounds.html?highlight=lifetime#trait-and-lifetime-bounds)**
-3. **[Lifetime elision](https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision)**
-4. **[The Rustonomicon Lifetimes](https://doc.rust-lang.org/nomicon/lifetimes.html#lifetimes)**
+视频中主要通过实现一个字符串分隔来演示和学习生命周期语法，从最初的不带生命周期的无法通过编译的实现，到 `StrSplit` 和 `haystack`、`delimiter` 拥有相同的生命周期，到实现 `StrSplit` 和 haysatck 有相同的生命周期，最后实现 `delimiter` 是一个范型 `Delimiter` ，这个范型是字符串中出现的所有可能类型，例如 `&str`、 `String` 、 `char` 等。经过这一系列的代码演进，能够对使用生命周期不再害怕和陌生，而更加复杂的场景也表示了实际上只有及其复杂的场景下才需要有多个生命周期标识。除去对生命周期相关内容的介绍，也介绍了其他 Rust 中的常见操作。
 
-**实践：实现一个StrSplit库。耗时1h。**
-
-**内容：**
+## **内容**
 
 1. 如何使用lifetime标记，以及多个lifetime标记的使用和关系。
 2. 如何实现迭代器。
@@ -27,7 +28,20 @@ March 16, 2022 8:00 PM 完成第二遍的视频记录，基本上第二遍视频
 4. Ref关键词。
 5. Option使用 ? 运算符和 as_mut()。
 
-**笔记：**
+## **参考**
+
+1. [https://gist.github.com/jonhoo/2a7fdcf79be03e51a5f95cd326f2a1e8](https://gist.github.com/jonhoo/2a7fdcf79be03e51a5f95cd326f2a1e8)
+2. **[Trait and lifetime bounds](https://doc.rust-lang.org/reference/trait-bounds.html?highlight=lifetime#trait-and-lifetime-bounds)**
+3. **[Lifetime elision](https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision)**
+4. **[The Rustonomicon Lifetimes](https://doc.rust-lang.org/nomicon/lifetimes.html#lifetimes)**
+
+## **实践**
+
+**实现一个StrSplit库。耗时1h。涉及到对 Struct、Tarit、 Generic Type的实现。**
+
+**加强实践：无**
+
+## **笔记**
 
 1. [0:03:36](https://www.youtube.com/watch?v=rAl-9HwD858&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=1&t=216s) Rust Lints: [https://doc.rust-lang.org/rustc/lints/index.html](https://doc.rust-lang.org/rustc/lints/index.html)
     1. 利用Rust的[Attributes](https://doc.rust-lang.org/reference/attributes.html)来扩展lints。`#![warn(missing_debug_implementations, rust_2018_idioms, missing_docs)]`
