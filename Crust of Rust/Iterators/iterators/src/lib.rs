@@ -1,3 +1,5 @@
+pub mod flatmap;
+
 pub trait IteratorExt: Iterator + Sized {
     fn our_flatten(self) -> Flatten<Self>
     where
@@ -98,7 +100,7 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+mod flateen_tests {
     use super::*;
 
     #[test]
