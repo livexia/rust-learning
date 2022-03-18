@@ -34,7 +34,8 @@ where
     U: IntoIterator,
 {
     outer_iter: O,
-    inner_iter: Option<U::IntoIter>, // should be a iterator with Item is U
+    front_iter: Option<U::IntoIter>, // should be a iterator with Item is U
+    back_iter: Option<U::IntoIter>,  // should be a iterator with Item is U
     f: F,
 }
 
@@ -47,7 +48,8 @@ where
     pub fn new(iter: O, f: F) -> Self {
         Self {
             outer_iter: iter,
-            inner_iter: None,
+            front_iter: None,
+            back_iter: None,
             f,
         }
     }
@@ -63,13 +65,40 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(ref mut inner_iter) = self.inner_iter {
+            if let Some(ref mut inner_iter) = self.front_iter {
                 if let Some(item) = inner_iter.next() {
                     return Some(item);
                 }
-                self.inner_iter = None;
+                self.front_iter = None;
             }
-            self.inner_iter = Some((self.f)(self.outer_iter.next()?).into_iter());
+            if let Some(outer_item) = self.outer_iter.next() {
+                self.front_iter = Some((self.f)(outer_item).into_iter())
+            } else {
+                return self.back_iter.as_mut()?.next();
+            };
+        }
+    }
+}
+
+impl<O, F, U> DoubleEndedIterator for FlatMap<O, F, U>
+where
+    O: DoubleEndedIterator,
+    F: FnMut(O::Item) -> U,
+    U: DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(ref mut inner_iter) = self.back_iter {
+                if let Some(item) = inner_iter.next_back() {
+                    return Some(item);
+                }
+                self.back_iter = None;
+            }
+            if let Some(outer_item) = self.outer_iter.next_back() {
+                self.back_iter = Some((self.f)(outer_item).into_iter())
+            } else {
+                return self.front_iter.as_mut()?.next_back();
+            };
         }
     }
 }
@@ -169,5 +198,36 @@ mod flatmap_test {
             .our_flat_map(|x| x.into_iter().rev().collect::<Vec<i32>>())
             .collect();
         assert_eq!(sub_sum, vec![3, 2, 1, 6, 5, 4]);
+    }
+
+    #[test]
+    fn two_way_flatmap() {
+        let mut i = vec![vec![1, 2, 3], vec![100, 200, 300]]
+            .into_iter()
+            .our_flat_map(|x| x.into_iter().map(|y| y + 1));
+        assert_eq!(i.next(), Some(2));
+        assert_eq!(i.next_back(), Some(301));
+        assert_eq!(i.next(), Some(3));
+        assert_eq!(i.next_back(), Some(201));
+        assert_eq!(i.next(), Some(4));
+        assert_eq!(i.next_back(), Some(101));
+        assert_eq!(i.next(), None);
+        assert_eq!(i.next_back(), None);
+    }
+
+    #[test]
+    fn compare_to_flat_map() {
+        let words = ["alpha", "beta", "gamma"];
+        let i = words.into_iter().our_flat_map(|s| s.chars());
+        let std_flat_map = words.into_iter().flat_map(|s| s.chars());
+        assert!(i.eq(std_flat_map));
+    }
+
+    #[test]
+    fn compare_to_map_flatten() {
+        let words = ["alpha", "beta", "gamma"];
+        let i = words.into_iter().our_flat_map(|s| s.chars());
+        let std_map_flat = words.into_iter().map(|s| s.chars()).flatten();
+        assert!(i.eq(std_map_flat));
     }
 }
