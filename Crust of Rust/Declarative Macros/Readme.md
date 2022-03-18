@@ -1,15 +1,34 @@
-### **[Crust of Rust: Declarative Macros](https://youtu.be/q6paRBbLgNw)**
+# **[Crust of Rust: Declarative Macros](https://youtu.be/q6paRBbLgNw)**
 
-**方法：先看一遍视频，然后自己脱离视频实现视频中的演示内容，再重新看一遍视频。**
+## 方法
 
-**进度：总耗时 5h20min**
+1. **先看一遍视频**
+2. **脱离视频实现视频中的演示内容**
+3. **代码说明**
+4. **再重新看一遍视频，对关键内容进行记录**
+5. **总结**
+
+## 进度
+
+**耗时： 5h20min March 17, 2022** 
 
 1. 1h36min，看完第一遍视频
 2. 54min，完成vecmac
 3. 26min，完成hashmapmac
 4. 2h24min，完成第二遍视频和笔记内容
 
-**参考：**
+## 总结
+
+视频介绍了宏，介绍了会实现的 `vec` 宏，一步步从实现空白的初始化，到实现重复的初始化，在这个过程中，Jon介绍了宏的实现，宏的学习材料，有关于宏的隔离，通过优化宏也介绍了在实现宏时涉及到的一系列模式。看完这个视频后，宏不再是像天书一样的混乱，宏也呈现了一定的规律，宏存在着一定的局限性，但是也能实现对程序简化的功能。不能说自己经过这个视频的学习和实践就完全掌握了宏，一方面是因为这个视频只介绍了一部分的宏，另一方面是即使是介绍的这一部分宏也是不完整的，但是相比于没看之前，我并不知道要如何学习宏，宏的作用是什么，它是怎样实现的，即使我对这些问题还是一知半解，但是凭借其中介绍的学习资料我可以在有需要的时候再进一步一步进行学习。
+
+## **内容**
+
+1. 如何使用 macro。
+2. 如何创建声明式 macro。
+3. 优化宏展开代码。
+4. 介绍了一个较好的对于宏参数技术的实现。
+
+## **参考**
 
 1. **[Macros](https://doc.rust-lang.org/book/ch19-06-macros.html#macros)**
 2. ****[The Little Book of Rust Macros](https://danielkeep.github.io/tlborm/book/index.html)****
@@ -21,20 +40,15 @@
 7. ****[maplit](https://docs.rs/maplit/latest/maplit/index.html)****
 8. [https://gist.github.com/jonhoo/ec57882a976a2d2a92b3138ea25cd45a](https://gist.github.com/jonhoo/ec57882a976a2d2a92b3138ea25cd45a)
 
-**实践：vec macro**
+## **实践**
+
+**实现标准库中的 vec 宏。通过实现这个宏，不再对宏感到陌生，至少声明式宏不再是一个躲在内部的事务，可以自己实现需要的宏，也可以阅读他人的宏。**
 
 **加强实践：hashmap macro**
 
 参考：****[maplit](https://docs.rs/maplit/latest/maplit/index.html)****
 
-**内容：**
-
-1. 如何使用 macro。
-2. 如何创建声明式 macro。
-3. 优化宏展开代码。
-4. 介绍了一个较好的对于宏参数技术的实现。
-
-**笔记：**
+## **笔记**
 
 1. [0:00:00](https://www.youtube.com/watch?v=q6paRBbLgNw&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=2&t=0s) Introduction，主要的关注点在于 **Declarative Macros** （声明式宏）。
     1. Macro类型：Declarative Macros、Procedural Macros
