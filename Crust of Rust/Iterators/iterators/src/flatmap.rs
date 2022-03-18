@@ -1,3 +1,5 @@
+use std::iter::Map;
+
 pub trait FlatMapExt: Iterator + Sized {
     fn our_flat_map<F, U>(self, f: F) -> FlatMap<Self, F, U>
     where
@@ -33,10 +35,9 @@ where
     F: FnMut(O::Item) -> U,
     U: IntoIterator,
 {
-    outer_iter: O,
+    outer_iter: Map<O, F>,
     front_iter: Option<U::IntoIter>, // should be a iterator with Item is U
     back_iter: Option<U::IntoIter>,  // should be a iterator with Item is U
-    f: F,
 }
 
 impl<O, F, U> FlatMap<O, F, U>
@@ -47,10 +48,9 @@ where
 {
     pub fn new(iter: O, f: F) -> Self {
         Self {
-            outer_iter: iter,
+            outer_iter: iter.map(f),
             front_iter: None,
             back_iter: None,
-            f,
         }
     }
 }
@@ -72,7 +72,7 @@ where
                 self.front_iter = None;
             }
             if let Some(outer_item) = self.outer_iter.next() {
-                self.front_iter = Some((self.f)(outer_item).into_iter())
+                self.front_iter = Some(outer_item.into_iter());
             } else {
                 return self.back_iter.as_mut()?.next();
             };
@@ -95,7 +95,7 @@ where
                 self.back_iter = None;
             }
             if let Some(outer_item) = self.outer_iter.next_back() {
-                self.back_iter = Some((self.f)(outer_item).into_iter())
+                self.back_iter = Some(outer_item.into_iter());
             } else {
                 return self.front_iter.as_mut()?.next_back();
             };
