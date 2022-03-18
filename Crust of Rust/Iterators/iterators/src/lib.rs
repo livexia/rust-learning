@@ -1,3 +1,21 @@
+pub trait IteratorExt: Iterator + Sized {
+    fn our_flatten(self) -> Flatten<Self>
+    where
+        Self::Item: IntoIterator;
+}
+
+impl<T> IteratorExt for T
+where
+    T: Iterator,
+{
+    fn our_flatten(self) -> Flatten<Self>
+    where
+        Self::Item: IntoIterator,
+    {
+        flatten(self)
+    }
+}
+
 pub fn flatten<I>(iter: I) -> Flatten<I::IntoIter>
 where
     I: IntoIterator,
@@ -145,6 +163,19 @@ mod tests {
     #[test]
     fn two_way() {
         let mut i = flatten(vec![vec![1, 2, 3], vec![4, 5, 6]]);
+        assert_eq!(i.next_back(), Some(6));
+        assert_eq!(i.next(), Some(1));
+        assert_eq!(i.next_back(), Some(5));
+        assert_eq!(i.next(), Some(2));
+        assert_eq!(i.next_back(), Some(4));
+        assert_eq!(i.next(), Some(3));
+        assert_eq!(i.next_back(), None);
+        assert_eq!(i.next(), None);
+    }
+
+    #[test]
+    fn two_way_trait_ext() {
+        let mut i = vec![vec![1, 2, 3], vec![4, 5, 6]].into_iter().our_flatten();
         assert_eq!(i.next_back(), Some(6));
         assert_eq!(i.next(), Some(1));
         assert_eq!(i.next_back(), Some(5));
