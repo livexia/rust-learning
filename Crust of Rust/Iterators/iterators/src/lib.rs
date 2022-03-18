@@ -1,13 +1,15 @@
-fn flatten<I>(iter: I) -> Flatten<I>
+fn flatten<I>(iter: I) -> Flatten<I::IntoIter>
 where
-    I: Iterator,
+    I: IntoIterator,
+    I::Item: IntoIterator,
 {
-    Flatten::new(iter)
+    Flatten::new(iter.into_iter())
 }
 
 pub struct Flatten<O>
 where
     O: Iterator,
+    O::Item: IntoIterator,
 {
     iter: O,
 }
@@ -15,6 +17,7 @@ where
 impl<O> Flatten<O>
 where
     O: Iterator,
+    O::Item: IntoIterator,
 {
     pub fn new(iter: O) -> Self {
         Flatten { iter }
@@ -24,6 +27,7 @@ where
 impl<O> Iterator for Flatten<O>
 where
     O: Iterator,
+    O::Item: IntoIterator,
 {
     type Item = O;
 
@@ -39,5 +43,10 @@ mod tests {
     #[test]
     fn it_works() {
         assert_eq!(flatten(::std::iter::empty::<Vec<()>>()).count(), 0)
+    }
+
+    #[test]
+    fn deep() {
+        assert_eq!(flatten(vec![vec![1, 2, 3]]).count(), 3)
     }
 }
