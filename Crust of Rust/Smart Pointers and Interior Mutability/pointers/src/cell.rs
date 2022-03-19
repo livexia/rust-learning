@@ -4,9 +4,14 @@ pub struct Cell<T> {
     value: UnsafeCell<T>,
 }
 
+// implied by UnsafeCell
+// Cell is !Sync
+
 impl<T> Cell<T> {
     pub fn new(value: T) -> Self {
         Self {
+            // SAFETY: we know no-one else is concurrently mutating this value(because !Sync)
+            // SAFETY: we know we're no invalidating any references, because we never give out any
             value: UnsafeCell::new(value),
         }
     }
@@ -15,6 +20,8 @@ impl<T> Cell<T> {
     where
         T: Copy,
     {
+        // SAFETY: we know no-one else is modifying this value, since only one thread can mutate
+        // (because !Sync), and it is executing this function instead
         unsafe { *self.value.get() }
     }
 
