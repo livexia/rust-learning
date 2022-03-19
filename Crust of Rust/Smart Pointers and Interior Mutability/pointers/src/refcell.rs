@@ -15,6 +15,9 @@ pub struct RefCell<T> {
     state: Cell<SharedState>,
 }
 
+// implied by UnsafeCell
+// RefCell is !Sync
+
 impl<T> RefCell<T> {
     pub fn new(value: T) -> Self {
         Self {
@@ -40,6 +43,8 @@ impl<T> RefCell<T> {
     pub fn borrow_mut(&self) -> RefMut<'_, T> {
         if let SharedState::Unshared = self.state.get() {
             self.state.set(SharedState::Exclusive);
+            // SAFETY: no other references have been given out since state would be
+            // Shared or Exclusive
             RefMut { refcell: self }
         } else {
             panic!("already borrowed: BorrowMutError")
@@ -55,6 +60,10 @@ impl<T> Deref for Ref<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
+        // SAFETY
+        // a Ref is only created id no exclusive references have been given out.
+        // once it is given out, state is set to Shared, so no exclusive referneces are given out
+        // so dereferening into a shared reference is fine
         unsafe { &*self.refcell.value.get() }
     }
 }
@@ -86,12 +95,18 @@ impl<T> Deref for RefMut<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
+        // SAFETY
+        // see safety for DerefMut
         unsafe { &*self.refcell.value.get() }
     }
 }
 
 impl<T> DerefMut for RefMut<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
+        // SAFETY
+        // a RefMut is only created if no other references have been given out.
+        // once it is given out, state is set to Exclusive, so no further referneces are given out
+        // so we have an exclusive lease on the inner value, so mutably dereferening is fine
         unsafe { &mut *self.refcell.value.get() }
     }
 }
