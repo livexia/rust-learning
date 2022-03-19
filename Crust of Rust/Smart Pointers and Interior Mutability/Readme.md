@@ -1,5 +1,3 @@
-# **[Crust of Rust: Smart Pointers and Interior Mutability](https://youtu.be/8O0Nt9qY_vo)**
-
 ## 方法
 
 1. **先看一遍视频**
@@ -357,8 +355,6 @@ impl<T> Drop for Rc<T> {
     }
 }
 ```
-
-### **加强实践：**
 
 ## **笔记**
 
