@@ -111,7 +111,7 @@ impl<T> Cell<T> {
 
 ### RefCell
 
-**自己实现是存有的疑惑：**
+**自己实现时存有的疑惑：**
 
 Q：为什么要让 RefCell 的 borrow 和 borrow_mut 返回 Ref 而不直接 返回 &T 呢？
 
