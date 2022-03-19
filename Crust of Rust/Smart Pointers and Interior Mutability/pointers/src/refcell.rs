@@ -23,26 +23,26 @@ impl<T> RefCell<T> {
         }
     }
 
-    pub fn borrow(&self) -> Option<Ref<'_, T>> {
+    pub fn borrow(&self) -> Ref<'_, T> {
         match self.state.get() {
             SharedState::Unshared => {
                 self.state.set(SharedState::Shared(1));
-                Some(Ref { refcell: self })
+                Ref { refcell: self }
             }
             SharedState::Shared(n) => {
                 self.state.set(SharedState::Shared(n + 1));
-                Some(Ref { refcell: self })
+                Ref { refcell: self }
             }
-            SharedState::Exclusive => panic!("already borrowed: BorrowMutError"),
+            SharedState::Exclusive => panic!("already mutably borrowed: BorrowError"),
         }
     }
 
-    pub fn borrow_mut(&self) -> Option<RefMut<'_, T>> {
+    pub fn borrow_mut(&self) -> RefMut<'_, T> {
         if let SharedState::Unshared = self.state.get() {
             self.state.set(SharedState::Exclusive);
-            Some(RefMut { refcell: self })
+            RefMut { refcell: self }
         } else {
-            None
+            panic!("already borrowed: BorrowMutError")
         }
     }
 }
@@ -101,17 +101,13 @@ mod tests {
     use super::*;
 
     #[test]
+    #[should_panic]
     fn panicked() {
         // use std::cell::RefCell;
         let c = RefCell::new(42);
 
-        {
-            let m = c.borrow();
-            let b = c.borrow_mut();
-            assert!(b.is_none());
-        }
+        let m = c.borrow();
         let b = c.borrow_mut();
-        assert!(b.is_some());
         // thread 'refcell::tests::it_works' panicked at 'already borrowed: BorrowMutError'
     }
 }
