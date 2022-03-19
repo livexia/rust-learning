@@ -1,5 +1,3 @@
-# Crust of Rust
-
 ## 概要
 
 Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9DegC5cQQ)的一个直播系列，主要关注点在于Rust中较为重要的技术点，通过学习这个直播系列，我可以对Rust的知识点和技术点有更为完整的认知。
@@ -8,9 +6,9 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 
 **难度：中上水平**
 
-**耗时：17h16min**
+**耗时：25h41min**
 
-**进度：Crust of Rust: Iterators**
+**进度：Crust of Rust: Smart Pointers and Interior Mutability**
 
 ## 学习方法
 
