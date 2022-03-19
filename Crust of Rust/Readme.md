@@ -19,4 +19,5 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 1. [Crust of Rust: Lifetime Annotations](./Lifetime%20Annotations/Readme.md)
 2. [Crust of Rust: Declarative Macros](./Declarative%20Macros/Readme.md)
 3. [Crust of Rust: Iterators](./Iterators/Readme.md)
-4. [Crust of Rust: Smart Pointers and Interior Mutability](./Smart%20Pointers%20and%20Interior%20Mutability//Readme.md)
+4. [Crust of Rust: Smart Pointers and Interior Mutability](./Smart%20Pointers%20and%20Interior%20Mutability/Readme.md)
+5. [Crust of Rust: Channels](./Channels/Readme.md)
