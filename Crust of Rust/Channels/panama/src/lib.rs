@@ -51,7 +51,7 @@ impl<T> Receiver<T> {
             if let Some(value) = shared.pop_front() {
                 return Some(value);
             } else {
-                drop(shared); // when there is no sender, locks will be continuously aquired and droped.
+                drop(shared); // when there is no sender, locks will be continuously aquired and dropped.
             }
         }
     }
