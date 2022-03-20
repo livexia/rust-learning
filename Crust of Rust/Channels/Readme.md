@@ -51,12 +51,13 @@
 2. Arc [https://doc.rust-lang.org/std/sync/struct.Arc.html](https://doc.rust-lang.org/std/sync/struct.Arc.html)
 3. Mutex [https://doc.rust-lang.org/std/sync/struct.Mutex.html](https://doc.rust-lang.org/std/sync/struct.Mutex.html)
 4. Condvar [https://doc.rust-lang.org/std/sync/struct.Condvar.html](https://doc.rust-lang.org/std/sync/struct.Condvar.html)
-5. parking_lot [https://crates.io/crates/parking_lot](https://crates.io/crates/parking_lot)
-6. **[Extra Conditionals with Match Guards](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html#extra-conditionals-with-match-guards)**
-7. **[Comments](https://doc.rust-lang.org/reference/comments.html#comments)**
-8. https://github.com/zesterer/flume
-9. https://github.com/crossbeam-rs/crossbeam
-10. [https://tokio.rs/tokio/tutorial/channels](https://tokio.rs/tokio/tutorial/channels)
+5. [https://gist.github.com/jonhoo/935060885d0d832d463fda3c89e8259d](https://gist.github.com/jonhoo/935060885d0d832d463fda3c89e8259d)
+6. parking_lot [https://crates.io/crates/parking_lot](https://crates.io/crates/parking_lot)
+7. **[Extra Conditionals with Match Guards](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html#extra-conditionals-with-match-guards)**
+8. **[Comments](https://doc.rust-lang.org/reference/comments.html#comments)**
+9. https://github.com/zesterer/flume
+10. https://github.com/crossbeam-rs/crossbeam
+11. [https://tokio.rs/tokio/tutorial/channels](https://tokio.rs/tokio/tutorial/channels)
 
 ## **实践**
 
