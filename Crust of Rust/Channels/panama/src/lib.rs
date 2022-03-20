@@ -1,9 +1,13 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::sync::Condvar;
 use std::sync::Mutex;
 
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
-    let shared = Arc::new(Mutex::new(VecDeque::default()));
+    let shared = Arc::new(Shared {
+        inner: Mutex::new(VecDeque::default()),
+        availability: Condvar::new(),
+    });
     (
         Sender {
             shared: Arc::clone(&shared), // 注意使用 Arc::clone 而不是 .clone
@@ -14,15 +18,23 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     )
 }
 
+pub struct Shared<T> {
+    inner: Mutex<VecDeque<T>>,
+    availability: Condvar, // Condvar cna not be in Muttex, so need another wrapper for the queue
+}
+
 pub struct Sender<T> {
-    shared: Arc<Mutex<VecDeque<T>>>,
+    shared: Arc<Shared<T>>,
 }
 
 impl<T> Sender<T> {
     pub fn send(&self, value: T) {
         // use &self instead of &mut self, because shared use Arc<Mutex<_>> interior mutability give by the Mutex
-        let mut shared = self.shared.lock().unwrap();
+        let mut shared = self.shared.inner.lock().unwrap();
         shared.push_back(value);
+
+        self.shared.availability.notify_one();
+        // after send notify the recv there is data on the queue, recvier can be wake up.
     }
 }
 
@@ -37,7 +49,7 @@ impl<T> Clone for Sender<T> {
 }
 
 pub struct Receiver<T> {
-    shared: Arc<Mutex<VecDeque<T>>>,
+    shared: Arc<Shared<T>>,
 }
 
 impl<T> Receiver<T> {
@@ -46,17 +58,19 @@ impl<T> Receiver<T> {
         // we want when there is no data on the queue, recv is blocked
         // when there is data on tge queue, return the first value
         // if there is no data, drop the lock, then rerun the loop.
+        let mut shared = self.shared.inner.lock().unwrap();
         loop {
-            let mut shared = self.shared.lock().unwrap();
             if let Some(value) = shared.pop_front() {
                 return Some(value);
             } else {
                 // drop(shared);
                 // when there is no data, locks will be continuously aquired and dropped.
-                // We need a way for the reciver to sleep when there is no data,
+                // We need a way for the receiver to sleep when there is no data,
                 // and when there is more date on the queue, we need to wake up the receiver.
                 // we use Condvar see https://doc.rust-lang.org/std/sync/struct.Condvar.html
 
+                shared = self.shared.availability.wait(shared).unwrap();
+                // unwrap to ignore possible thread poison
                 // when there is no sender, this will be hang,
                 // so we need a counter to keep track of the number of senders.
             }
