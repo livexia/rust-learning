@@ -41,10 +41,10 @@ pub struct Receiver<T> {
 }
 
 impl<T> Receiver<T> {
-    pub fn recv(&self) -> T {
+    pub fn recv(&self) -> Option<T> {
         // use &self instead of &mut self, because shared use Arc<Mutex<_>> interior mutability give by the Mutexs
         let mut shared = self.shared.lock().unwrap();
-        shared.pop_front().unwrap()
+        shared.pop_front()
     }
 }
 
@@ -56,16 +56,25 @@ mod tests {
     fn it_works() {
         let (tx, rx) = channel();
         tx.send(42);
-        assert_eq!(rx.recv(), 42);
+        assert_eq!(rx.recv(), Some(42));
     }
 
     #[test]
     fn two_one() {
         let (tx, rx) = channel();
         tx.send(42);
-        assert_eq!(rx.recv(), 42);
+        assert_eq!(rx.recv(), Some(42));
         let tx1 = tx.clone();
         tx1.send(43);
-        assert_eq!(rx.recv(), 43);
+        assert_eq!(rx.recv(), Some(43));
+    }
+
+    #[test]
+    fn no_sender() {
+        // expect
+        let (tx, rx) = channel::<()>();
+        drop(tx);
+        let x = rx.recv();
+        assert_eq!(x, None)
     }
 }
