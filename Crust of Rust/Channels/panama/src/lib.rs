@@ -18,6 +18,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
         },
         Receiver {
             shared: Arc::clone(&shared),
+            buffer: VecDeque::default(), // add buffer for recv optimization
         },
     )
 }
@@ -82,18 +83,33 @@ impl<T> Drop for Sender<T> {
 
 pub struct Receiver<T> {
     shared: Arc<Shared<T>>,
+    buffer: VecDeque<T>,
+    // add buffer to receiver,
+    // because there is only one receiver, so it is ok to put buffer outside the Mutex
+    // when there is data one the buffer, just pop from the buffer, no need to acquire the lock
+    // when there is nothing on the buffer, acquire the lock, when there is data in the queue,
+    // pop the first one, and swap the buffer and queue.
 }
 
 impl<T> Receiver<T> {
-    pub fn recv(&self) -> Option<T> {
-        // use &self instead of &mut self, because shared use Arc<Mutex<_>> interior mutability give by the Mutexs
+    pub fn recv(&mut self) -> Option<T> {
         // we want when there is no data on the queue, recv is blocked
+        // use &self instead of &mut self, because shared use Arc<Mutex<_>> interior mutability give by the Mutexs
+        // because of the buffer, we need &mut self, to quick swap the buffer and the queue.
+        if let Some(t) = self.buffer.pop_front() {
+            // when there is data one the buffer, just pop from the buffer, no need to acquire the lock
+            return Some(t);
+        }
+
         // when there is data on tge queue, return the first value
         // if there is no data, drop the lock, then rerun the loop.
         let mut shared = self.shared.inner.lock().unwrap();
         loop {
             match shared.queue.pop_front() {
-                Some(t) => return Some(t),
+                Some(t) => {
+                    ::std::mem::swap(&mut self.buffer, &mut shared.queue);
+                    return Some(t);
+                }
                 None if shared.counter == 0 => return None,
                 // when receiver wake up, and there is no sender, recv return None
                 None => {
@@ -121,14 +137,14 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let (tx, rx) = channel();
+        let (tx, mut rx) = channel();
         tx.send(42);
         assert_eq!(rx.recv(), Some(42));
     }
 
     #[test]
     fn two_one() {
-        let (tx, rx) = channel();
+        let (tx, mut rx) = channel();
         tx.send(42);
         assert_eq!(rx.recv(), Some(42));
         let tx1 = tx.clone();
@@ -139,7 +155,7 @@ mod tests {
     #[test]
     fn no_sender() {
         // expect not hang
-        let (tx, rx) = channel::<()>();
+        let (tx, mut rx) = channel::<()>();
         drop(tx);
         let x = rx.recv();
         assert_eq!(x, None)
@@ -150,7 +166,7 @@ mod tests {
         // this will hang because tx not drop
         // always will remain atleast one sender
         use std::thread;
-        let (tx, rx) = channel();
+        let (tx, mut rx) = channel();
         let tx1 = tx.clone();
         let tx2 = tx.clone();
 
