@@ -51,7 +51,14 @@ impl<T> Receiver<T> {
             if let Some(value) = shared.pop_front() {
                 return Some(value);
             } else {
-                drop(shared); // when there is no sender, locks will be continuously aquired and dropped.
+                // drop(shared);
+                // when there is no data, locks will be continuously aquired and dropped.
+                // We need a way for the reciver to sleep when there is no data,
+                // and when there is more date on the queue, we need to wake up the receiver.
+                // we use Condvar see https://doc.rust-lang.org/std/sync/struct.Condvar.html
+
+                // when there is no sender, this will be hang,
+                // so we need a counter to keep track of the number of senders.
             }
         }
     }
