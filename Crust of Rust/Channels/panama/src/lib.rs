@@ -43,8 +43,17 @@ pub struct Receiver<T> {
 impl<T> Receiver<T> {
     pub fn recv(&self) -> Option<T> {
         // use &self instead of &mut self, because shared use Arc<Mutex<_>> interior mutability give by the Mutexs
-        let mut shared = self.shared.lock().unwrap();
-        shared.pop_front()
+        // we want when there is no data on the queue, recv is blocked
+        // when there is data on tge queue, return the first value
+        // if there is no data, drop the lock, then rerun the loop.
+        loop {
+            let mut shared = self.shared.lock().unwrap();
+            if let Some(value) = shared.pop_front() {
+                return Some(value);
+            } else {
+                drop(shared); // when there is no sender, locks will be continuously aquired and droped.
+            }
+        }
     }
 }
 
