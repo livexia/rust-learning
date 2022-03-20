@@ -59,6 +59,8 @@ impl<T> AsyncSender<T> {
         // use &self instead of &mut self, because shared use Arc<Mutex<_>> interior mutability give by the Mutex
         let mut shared = self.shared.inner.lock().unwrap();
         loop {
+            // when bound is 0 and there is no data on the queue
+            // allow once push_back, after push notify the receiver and block the sender
             if shared.bound == 0 && shared.queue.len() == 0 {
                 shared.queue.push_back(value);
                 self.shared.recv_availability.notify_one();
