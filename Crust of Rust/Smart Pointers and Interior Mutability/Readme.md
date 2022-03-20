@@ -1,3 +1,5 @@
+# **[Crust of Rust: Smart Pointers and Interior Mutability](https://youtu.be/8O0Nt9qY_vo)**
+
 ## 方法
 
 1. **先看一遍视频**
@@ -35,7 +37,7 @@
 6. 实现 RefCell
 7. 对 Ref 实现 Deref
 8. 对 RefMut 实现 DerefMut
-9. 实现 Rc
+9. 实现 Rc， 注意在使用 Rc 的时候，避免使用 `Rc.clone()` 而使用 `Rc::clone()`
 10. 简单介绍 RwLock 和 Mutex
 11. 简单介绍 Arc，类似于 Rc ，但是利用 Atomic Count
 12. 简单介绍 std::borrow::Cow

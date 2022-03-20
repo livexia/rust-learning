@@ -76,7 +76,7 @@ mod tests {
         let five = Rc::new(5);
 
         {
-            let f_c = five.clone();
+            let f_c = Rc::clone(&five);
             assert_eq!(2, unsafe { f_c.inner.as_ref().refcount.get() });
         }
         assert_eq!(1, unsafe { five.inner.as_ref().refcount.get() });
@@ -90,7 +90,7 @@ mod tests {
 
         {
             assert_eq!(five.get(), 5);
-            let f_c = five.clone();
+            let f_c = Rc::clone(&five);
             f_c.set(10);
             // assert_eq!(2, unsafe { f_c.inner.as_ref().refcount.get() });
         }
