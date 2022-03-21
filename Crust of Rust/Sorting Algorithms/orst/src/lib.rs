@@ -10,6 +10,12 @@ mod insertionsort;
 mod quicksort;
 mod selectionsort;
 
+pub use bubblesort::BubbleSort;
+pub use heapsort::HeapSort;
+pub use insertionsort::InsertionSort;
+pub use quicksort::QuickSort;
+pub use selectionsort::SelectionSort;
+
 pub struct StdSorter;
 impl<T> Sorter<T> for StdSorter {
     fn sort(&self, slice: &mut [T])
