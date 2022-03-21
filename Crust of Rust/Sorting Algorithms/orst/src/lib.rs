@@ -5,6 +5,7 @@ pub trait Sorter<T> {
 }
 
 mod bubblesort;
+mod heapsort;
 mod insertionsort;
 mod quicksort;
 mod selectionsort;
