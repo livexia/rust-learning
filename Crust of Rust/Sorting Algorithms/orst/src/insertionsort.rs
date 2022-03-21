@@ -1,7 +1,7 @@
 use super::Sorter;
 
 pub struct InsertionSort {
-    smart: bool,
+    pub smart: bool,
 }
 
 impl<T> Sorter<T> for InsertionSort {
