@@ -7,6 +7,9 @@ impl<T> Sorter<T> for BubbleSort {
     where
         T: Ord,
     {
+        // see https://en.wikipedia.org/wiki/Bubble_sort
+        // repeatedly steps through the list,
+        // compares adjacent elements and swaps them if they are in the wrong order.
         let mut swaped = true;
         while swaped {
             swaped = false;
@@ -21,7 +24,7 @@ impl<T> Sorter<T> for BubbleSort {
 }
 
 #[test]
-fn bubble_works() {
+fn it_works() {
     let mut things = vec![5, 6, 1, 2, 3];
     BubbleSort.sort(&mut things);
     assert_eq!(things, &[1, 2, 3, 5, 6]);
