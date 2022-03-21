@@ -1,3 +1,5 @@
+# **[Crust of Rust: Channels](https://youtu.be/b4mS5UPHh20)**
+
 ## 方法
 
 1. **先看一遍视频**
@@ -56,6 +58,7 @@
 9. https://github.com/zesterer/flume
 10. https://github.com/crossbeam-rs/crossbeam
 11. [https://tokio.rs/tokio/tutorial/channels](https://tokio.rs/tokio/tutorial/channels)
+12. [https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap](https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap)
 
 ## **实践**
 
