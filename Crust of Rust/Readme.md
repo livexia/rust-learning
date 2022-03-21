@@ -23,3 +23,4 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 3. [Crust of Rust: Iterators](./Iterators/Readme.md)
 4. [Crust of Rust: Smart Pointers and Interior Mutability](./Smart%20Pointers%20and%20Interior%20Mutability/Readme.md)
 5. [Crust of Rust: Channels](./Channels/Readme.md)
+5. [Crust of Rust: Sorting Algorithms](./Sorting%20Algorithms/Readme.md)
