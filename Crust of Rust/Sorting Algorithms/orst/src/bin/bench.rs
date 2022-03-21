@@ -41,7 +41,7 @@ fn main() {
         let mut values = Vec::with_capacity(n);
         for _ in 0..n {
             values.push(SortEvaluator {
-                t: 10,
+                t: rand.gen::<usize>(),
                 cmps: Rc::clone(&counter),
             });
         }
@@ -63,11 +63,11 @@ fn main() {
                 &values,
                 &counter
             );
-            // run_bench!(n, SelectionSort, "selection", &values, &counter);
-            // run_bench!(n, QuickSort, "quick", &values, &counter);
-            // run_bench!(n, HeapSort, "heap", &values, &counter);
-            // run_bench!(n, StdSorter, "stdstable", &values, &counter);
-            // run_bench!(n, StdUnstableSorter, "stdunstable", &values, &counter);
+            run_bench!(n, SelectionSort, "selection", &values, &counter);
+            run_bench!(n, QuickSort, "quick", &values, &counter);
+            run_bench!(n, HeapSort, "heap", &values, &counter);
+            run_bench!(n, StdSorter, "stdstable", &values, &counter);
+            run_bench!(n, StdUnstableSorter, "stdunstable", &values, &counter);
         }
     }
 }
@@ -85,10 +85,10 @@ fn bench<T: Ord + Clone, S: Sorter<SortEvaluator<T>>>(
     values: &[SortEvaluator<T>],
     counter: &Cell<usize>,
 ) -> (usize, f64) {
-    let mut value: Vec<_> = values.to_vec();
+    let mut values: Vec<_> = values.to_vec();
     counter.set(0);
     let time = std::time::Instant::now();
-    sorter.sort(&mut value);
+    sorter.sort(&mut values);
     let took = time.elapsed();
     let count = counter.get();
     // assert!(values.is_sorted());
