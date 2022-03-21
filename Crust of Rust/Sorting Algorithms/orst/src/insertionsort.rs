@@ -9,6 +9,7 @@ impl<T> Sorter<T> for InsertionSort {
     where
         T: Ord,
     {
+        // see https://en.wikipedia.org/wiki/Insertion_sort
         // [ sorted | unsorted ]
         // select first element on unsorted, find the location where the element fit
         // inster that element on the location
