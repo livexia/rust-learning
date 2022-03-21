@@ -22,7 +22,7 @@ fn heapify<T: Ord>(slice: &mut [T], root: usize) {
         // swap the root value with the child
         slice.swap(root, max);
         // and make sure the affacted child tree is also heapify
-        // heapify(slice, max);
+        heapify(slice, max);
     }
 }
 
@@ -56,9 +56,15 @@ fn it_works() {
     for i in (0..(slice.len() / 2)).rev() {
         heapify(slice, i);
     }
-    eprintln!("{:?}", slice);
 
     let mut things = vec![5, 6, 1, 2, 3];
     HeapSort.sort(&mut things);
     assert_eq!(things, &[1, 2, 3, 5, 6]);
+}
+
+#[test]
+fn bigger_test() {
+    let mut things = vec![5, 6, 1, 2, 3, 9, 10, 20, 100, 10, 2, 10, 1, 2];
+    HeapSort.sort(&mut things);
+    assert_eq!(things, &[1, 1, 2, 2, 2, 3, 5, 6, 9, 10, 10, 10, 20, 100]);
 }
