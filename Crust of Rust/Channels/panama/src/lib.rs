@@ -1,5 +1,6 @@
 pub mod sync_channel;
 
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Condvar;
@@ -32,7 +33,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
         },
         Receiver {
             shared: Arc::clone(&shared),
-            buffer: VecDeque::default(), // add buffer for recv optimization
+            buffer: RefCell::new(VecDeque::default()), // add buffer for recv optimization
         },
     )
 }
@@ -97,20 +98,22 @@ impl<T> Drop for Sender<T> {
 
 pub struct Receiver<T> {
     shared: Arc<Shared<T>>,
-    buffer: VecDeque<T>,
+    buffer: RefCell<VecDeque<T>>,
     // add buffer to receiver,
     // because there is only one receiver, so it is ok to put buffer outside the Mutex
     // when there is data one the buffer, just pop from the buffer, no need to acquire the lock
     // when there is nothing on the buffer, acquire the lock, when there is data in the queue,
     // pop the first one, and swap the buffer and queue.
+    // make buffer: RefCell<VecDeque<T>>, to avoid use of &mut self,
 }
 
 impl<T> Receiver<T> {
-    pub fn recv(&mut self) -> Option<T> {
+    pub fn recv(&self) -> Option<T> {
         // we want when there is no data on the queue, recv is blocked
         // use &self instead of &mut self, because shared use Arc<Mutex<_>> interior mutability give by the Mutexs
         // because of the buffer, we need &mut self, to quick swap the buffer and the queue.
-        if let Some(t) = self.buffer.pop_front() {
+        // make buffer: RefCell<VecDeque<T>>, to avoid use of &mut self,
+        if let Some(t) = self.buffer.borrow_mut().pop_front() {
             // when there is data one the buffer, just pop from the buffer, no need to acquire the lock
             return Some(t);
         }
@@ -121,7 +124,10 @@ impl<T> Receiver<T> {
         loop {
             match shared.queue.pop_front() {
                 Some(t) => {
-                    ::std::mem::swap(&mut self.buffer, &mut shared.queue);
+                    // use std::mem::swap to quick swap the inner data with queue
+                    // see: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap
+                    // also see: https://doc.rust-lang.org/src/core/cell.rs.html#814
+                    ::std::mem::swap(&mut *self.buffer.borrow_mut(), &mut shared.queue);
                     return Some(t);
                 }
                 None if shared.counter == 0 => return None,
@@ -151,14 +157,14 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let (tx, mut rx) = channel();
+        let (tx, rx) = channel();
         tx.send(42);
         assert_eq!(rx.recv(), Some(42));
     }
 
     #[test]
     fn two_one() {
-        let (tx, mut rx) = channel();
+        let (tx, rx) = channel();
         tx.send(42);
         assert_eq!(rx.recv(), Some(42));
         let tx1 = tx.clone();
@@ -169,7 +175,7 @@ mod tests {
     #[test]
     fn no_sender() {
         // expect not hang
-        let (tx, mut rx) = channel::<()>();
+        let (tx, rx) = channel::<()>();
         drop(tx);
         let x = rx.recv();
         assert_eq!(x, None)
@@ -180,7 +186,7 @@ mod tests {
         // this will hang because tx not drop
         // always will remain atleast one sender
         use std::thread;
-        let (tx, mut rx) = channel();
+        let (tx, rx) = channel();
         let tx1 = tx.clone();
         let tx2 = tx.clone();
 

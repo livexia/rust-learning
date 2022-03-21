@@ -1,5 +1,3 @@
-# **[Crust of Rust: Channels](https://youtu.be/b4mS5UPHh20)**
-
 ## 方法
 
 1. **先看一遍视频**
@@ -231,6 +229,19 @@ impl<T> Receiver<T> {
         }
     }
 }
+```
+
+使用 RefCell<VecDeque<T>> 作为 buffer 的类型，保证 recv 不需要 &mut self 而仅需要 &self 
+
+`Receiver`: `buffer: RefCell<VecDeque<T>>,`
+
+recv() 中使用 ::std::mem::swap(&mut *self.buffer.borrow_mut(), &mut shared.queue); 进行内存替换，见 [https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap](https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap) [https://doc.rust-lang.org/src/core/cell.rs.html#814](https://doc.rust-lang.org/src/core/cell.rs.html#814)
+
+```rust
+// use std::mem::swap to quick swap the inner data with queue
+// see: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap
+// also see: https://doc.rust-lang.org/src/core/cell.rs.html#814
+::std::mem::swap(&mut *self.buffer.borrow_mut(), &mut shared.queue);
 ```
 
 ### 加强实践：sync_channel
