@@ -6,6 +6,7 @@ pub trait Sorter<T> {
 
 mod bubblesort;
 mod insertionsort;
+mod selectionsort;
 
 pub struct StdSorter;
 impl<T> Sorter<T> for StdSorter {
