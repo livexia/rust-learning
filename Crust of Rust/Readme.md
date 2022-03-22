@@ -10,7 +10,7 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 
 **耗时：44h15min**
 
-**进度：Crust of Rust: Sorting Algorithms**
+**进度：Crust of Rust: Subtyping and Variance**
 
 ## 学习方法
 
@@ -24,3 +24,4 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 4. [Crust of Rust: Smart Pointers and Interior Mutability](./Smart%20Pointers%20and%20Interior%20Mutability/Readme.md)
 5. [Crust of Rust: Channels](./Channels/Readme.md)
 6. [Crust of Rust: Sorting Algorithms](./Sorting%20Algorithms/Readme.md)
+7. [Crust of Rust: Subtyping and Variance](./Subtyping%20and%20Variance/Readme.md)
