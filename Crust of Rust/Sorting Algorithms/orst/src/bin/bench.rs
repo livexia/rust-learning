@@ -66,6 +66,7 @@ fn main() {
             run_bench!(n, SelectionSort, "selection", &values, &counter);
             run_bench!(n, QuickSort, "quick", &values, &counter);
             run_bench!(n, HeapSort, "heap", &values, &counter);
+            run_bench!(n, MergeSort, "merge", &values, &counter);
             run_bench!(n, StdSorter, "stdstable", &values, &counter);
             run_bench!(n, StdUnstableSorter, "stdunstable", &values, &counter);
         }

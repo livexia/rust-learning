@@ -3,23 +3,26 @@ use super::Sorter;
 pub struct MergeSort;
 
 fn merge_sort<T: Ord>(slice: &mut [T]) {
-    let mid = slice.len();
-    let (left, right) = slice.split_at_mut(mid);
-    merge_sort(left);
-    merge_sort(right);
-    merge(left, right);
+    match slice.len() {
+        0 | 1 => return,
+        _ => (),
+    }
+    let mid = slice.len() / 2;
+    // let (left, right) = slice.split_at_mut(mid);
+    merge_sort(&mut slice[..mid]);
+    merge_sort(&mut slice[mid..]);
+    merge(slice, mid);
 }
 
-fn merge<T: Ord>(left: &mut [T], right: &mut [T]) {
+fn merge<T: Ord>(slice: &mut [T], mid: usize) {
     let mut i = 0;
-    let mut j = 0;
-    let mut temp: &mut [T] = &mut Vec::new();
-    while i < left.len() && j < right.len() {
-        if left[i] <= right[j] {
-            i += 1;
-        } else {
+    let mut j = mid;
+    while i < j && j < slice.len() {
+        if slice[i] > slice[j] {
             j += 1;
+            slice[i..j].rotate_right(1);
         }
+        i += 1;
     }
 }
 
@@ -33,8 +36,7 @@ impl<T> Sorter<T> for MergeSort {
         // each containing one element (a list of one element is considered sorted).
         // Repeatedly merge sublists to produce new sorted sublists until there is only one sublist remaining.
         // This will be the sorted list.
-
-        todo!()
+        merge_sort(slice)
     }
 }
 

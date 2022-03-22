@@ -7,12 +7,14 @@ pub trait Sorter<T> {
 mod bubblesort;
 mod heapsort;
 mod insertionsort;
+mod mergesort;
 mod quicksort;
 mod selectionsort;
 
 pub use bubblesort::BubbleSort;
 pub use heapsort::HeapSort;
 pub use insertionsort::InsertionSort;
+pub use mergesort::MergeSort;
 pub use quicksort::QuickSort;
 pub use selectionsort::SelectionSort;
 
