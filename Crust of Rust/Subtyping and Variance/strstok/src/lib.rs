@@ -1,10 +1,19 @@
-pub fn strstok<'a>(s: &'a mut &'a str, delimiter: char) -> &'a str {
-    ""
+pub fn strtok<'a>(s: &'a mut &'a str, delimiter: char) -> &'a str {
+    if let Some(i) = s.find(delimiter) {
+        let prefix = &s[..i];
+        let suffix = &s[(i + 1)..];
+        *s = suffix;
+        prefix
+    } else {
+        let prefix = *s;
+        *s = "";
+        prefix
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::strstok;
+    use super::strtok;
 
     #[test]
     fn it_works() {
