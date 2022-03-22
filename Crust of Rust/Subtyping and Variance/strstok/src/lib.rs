@@ -18,7 +18,7 @@ mod tests {
     #[test]
     fn it_works() {
         let mut s = "hello world";
-        let hello = strstok(&mut s, ' ');
+        let hello = strtok(&mut s, ' ');
         assert_eq!(hello, "hello");
         assert_eq!(s, "world");
     }
