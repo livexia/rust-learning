@@ -54,19 +54,16 @@ mod tests {
 // }
 
 // invariant
-// fn test<'a>(s: &'_ mut &'static str, t: &'a str) {
-//     *s = t;
+// fn foo<'a>(s: &mut &'a str, x: &'a str) {
+//     *s = x;
 // }
 
 // #[test]
 // fn test_main() {
-//     let mut x: &'static str = "hello world";
-//     let x2 = &mut x;
-//     {
-//         let t: &str = "hell";
-//         test(x2, t);
-//     }
-//     dbg!(x2);
-//     dbg!(x);
+//     let mut s: &'static str = "hello world";
+//     let x = String::new();
+//     foo(&mut s, &x);
+//     drop(x);
+//     println!("{}", s);
 //     // dbg!(x2);
 // }
