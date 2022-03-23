@@ -1,3 +1,5 @@
+#![feature(dropck_eyepatch)]
+
 use std::ops::Deref;
 use std::ops::DerefMut;
 
@@ -14,7 +16,8 @@ impl<T> Boks<T> {
     }
 }
 
-impl<T> Drop for Boks<T> {
+// Safety: there is no access the T inside the drop so it'is ok to use may_dangle attritube
+unsafe impl<#[may_dangle] T> Drop for Boks<T> {
     fn drop(&mut self) {
         // Safety: this is fine because the pointer came from a Box,
         // so it is safe to convert back to a box to drop it.
@@ -43,4 +46,18 @@ fn main() {
     let v = 42;
     let b = Boks::ny(v);
     println!("b: {}", &*b);
+
+    // without may_dangle on the Drop this will compile fail
+    // becaue the drop check thinks when drop(b),
+    // may access the &mut y with the &mut y,
+    // so the &mut y shoule live as long as the function end.
+    // when comment out the Drop for the Boks, this will compile fine.
+    // after add may_dangle attritube to the Drop, this will compile fine.
+    // because there is no access &mut y inside b, and after println!("b: {}", *b); there is no access b
+    // so the b can be drop after it.
+    let mut y = 42;
+    let b = Boks::ny(&mut y);
+    println!("b: {}", *b);
+    // drop(b);
+    println!("y: {}", y);
 }
