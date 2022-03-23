@@ -119,4 +119,25 @@ fn main() {
     // is is not allowed because Boks<T> is invariant
     // after use NonNull to replace *mut make Boks<T> covariant this works fine
     box1 = box2;
+
+    // Demo for std::iter::Empty
+    use std::iter::Empty;
+    let mut x = 42;
+    let mut empty_it: Empty<Oisann<&'static mut i32>> = Empty::default();
+    // struct Empty<T>(PhantomData<T>)
+    // let mut o: Option<Oisann<&'static mut i32>> = Some(Oisann(&mut x)); // <- this is wrong
+    let mut o = Some(Oisann(&mut x));
+    {
+        o /* ...<&'a mut i32> */ = empty_it.next(); /* return ...<&'static mut i32> */
+        // empty_it produce 'static lifetime get shorten
+    }
+    // &mut x drop before this
+    drop(o);
+    println!("{:?}", x);
+    drop(x);
+    // empty_it drop later is fine, because empty_it is never tied to the x
+    // empty_it will always produce the Oisann<&'static mut i32> this is also never tied to the x
+    // so this is fine
+    let _ = empty_it.next();
+    drop(empty_it);
 }
