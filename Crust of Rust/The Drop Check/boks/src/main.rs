@@ -94,4 +94,26 @@ fn main() {
     // // PhantomData<T> tells the drop checker, the T is used, so make sure the T drop before self.
     // // if comment out Drop for the Oisann then this is fine,
     // // because b will drop before println!("{:?}", z);
+
+    // because the field p: *mut T then T is invariant,
+    // and the field _m: PhantomData<T> indicate that the T is covariant,
+    // then there is a conflict, so the T in the Boks is invariant
+    // but origin Box is covariant, so need to change the Boks variance
+    // we could use NonNull to replace *mut
+
+    // Variance demo for the Box
+    // this code will work fine
+    let s = String::from("hei");
+    let mut box1 = Box::new(&*s);
+    let box2: Box<&'static str> = Box::new("heisann");
+    // is is allowed because Box<T> is covariant
+    box1 = box2;
+
+    // Variance demo for the Boks
+    // with field p: *mut T this test will fail
+    let s = String::from("hei");
+    let mut box1 = Boks::ny(&*s);
+    let box2: Boks<&'static str> = Boks::ny("heisann");
+    // is is not allowed because Boks<T> is invariant
+    box1 = box2;
 }
