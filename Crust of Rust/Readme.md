@@ -8,9 +8,9 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 
 **难度：中上水平**
 
-**耗时：44h15min**
+**耗时：51h55min**
 
-**进度：Crust of Rust: Subtyping and Variance**
+**进度：Crust of Rust: The Drop Check**
 
 ## 学习方法
 
@@ -25,3 +25,4 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 5. [Crust of Rust: Channels](./Channels/Readme.md)
 6. [Crust of Rust: Sorting Algorithms](./Sorting%20Algorithms/Readme.md)
 7. [Crust of Rust: Subtyping and Variance](./Subtyping%20and%20Variance/Readme.md)
+8. [Crust of Rust: The Drop Check](./The%20Drop%20Check/Readme.md)
