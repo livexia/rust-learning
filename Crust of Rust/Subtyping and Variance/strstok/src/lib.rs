@@ -67,3 +67,15 @@ mod tests {
 //     println!("{}", s);
 //     // dbg!(x2);
 // }
+
+// why in &'a mut T 'a is covariant
+pub fn bar() {
+    let mut y = true;
+    let mut z = &mut y;
+
+    let x = Box::new(true);
+    let x: &'static mut bool = Box::leak(x);
+    let _ = z;
+    z = x; // &'y mut bool = &'static mut bool
+    drop(z)
+}
