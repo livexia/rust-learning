@@ -3,17 +3,19 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::ptr::NonNull;
 
 pub struct Boks<T> {
-    p: *mut T,
-    _m: PhantomData<T>,
+    p: NonNull<T>,      // NonNull<T> replace *mut T to make sure Boks is covariant
+    _m: PhantomData<T>, // PhantomData<T> to make sure when drop the Boks drop checker will care about T
 }
 
 impl<T> Boks<T> {
     pub fn ny(t: T) -> Self {
         Self {
             // use box to create data on heap, always return nonnull pointer
-            p: Box::into_raw(Box::new(t)),
+            // Safety: because Box never give out null pointer, so it is fine to use new_unchecked
+            p: unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(t))) },
             _m: PhantomData,
         }
     }
@@ -24,7 +26,7 @@ unsafe impl<#[may_dangle] T> Drop for Boks<T> {
     fn drop(&mut self) {
         // Safety: this is fine because the pointer came from a Box,
         // so it is safe to convert back to a box to drop it.
-        let _ = unsafe { Box::from_raw(self.p) };
+        let _ = unsafe { Box::from_raw(self.p.as_ptr()) };
     }
 }
 
@@ -33,7 +35,7 @@ impl<T> Deref for Boks<T> {
     fn deref(&self) -> &Self::Target {
         // Safety: pointer came from a Box<T>,
         // so it is fine to return a &T from the pointers
-        unsafe { &*self.p }
+        unsafe { self.p.as_ref() }
     }
 }
 
@@ -41,7 +43,7 @@ impl<T> DerefMut for Boks<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // Safety: pointer came from a Box<T>,
         // so it is fine to return a &mut T from the pointer
-        unsafe { &mut *self.p }
+        unsafe { self.p.as_mut() }
     }
 }
 
@@ -115,5 +117,6 @@ fn main() {
     let mut box1 = Boks::ny(&*s);
     let box2: Boks<&'static str> = Boks::ny("heisann");
     // is is not allowed because Boks<T> is invariant
+    // after use NonNull to replace *mut make Boks<T> covariant this works fine
     box1 = box2;
 }
