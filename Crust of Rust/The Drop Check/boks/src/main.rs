@@ -42,11 +42,23 @@ impl<T> DerefMut for Boks<T> {
     }
 }
 
+use std::fmt::Debug;
+pub struct Oisann<T: Debug>(T);
+
+impl<T: Debug> Drop for Oisann<T> {
+    fn drop(&mut self) {
+        // Oisann drop access the T, so T msut outlive self
+        // if T dropped before self, then this is a dangle pinter
+        println!("inside oisann: {:?}", self.0)
+    }
+}
+
 fn main() {
     let v = 42;
     let b = Boks::ny(v);
     println!("b: {}", &*b);
 
+    // ALLOW: Drop not too restrictive
     // without may_dangle on the Drop this will compile fail
     // becaue the drop check thinks when drop(b),
     // may access the &mut y with the &mut y,
@@ -60,4 +72,18 @@ fn main() {
     println!("b: {}", *b);
     // drop(b);
     println!("y: {}", y);
+
+    // when drop the boks, it need to drop the T,
+    // but with the may_dangle attritube, drop checker will not check the T,
+    // so the type is vulnerable
+    let mut z = 42;
+    // this will compile fine, but this is wrong, because
+    let b = Boks::ny(Oisann(&mut z));
+    // Box will compile fail
+    // let b = Box::new(Oisann(&mut z));
+    println!("{:?}", z);
+    drop(z);
+    println!("z dropped");
+    // Oisann<&mut z> drop after this, drop Oisann will access z
+    // but z is already dropped, so the drop for the Oisann access a dangle pointer
 }
