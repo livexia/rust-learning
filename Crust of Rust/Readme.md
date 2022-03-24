@@ -8,9 +8,9 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 
 **难度：中上水平**
 
-**耗时：51h55min**
+**耗时：57h55min**
 
-**进度：Crust of Rust: The Drop Check**
+**进度：Crust of Rust: Atomics and Memory Ordering**
 
 ## 学习方法
 
