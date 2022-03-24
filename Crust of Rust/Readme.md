@@ -26,3 +26,4 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 6. [Crust of Rust: Sorting Algorithms](./Sorting%20Algorithms/Readme.md)
 7. [Crust of Rust: Subtyping and Variance](./Subtyping%20and%20Variance/Readme.md)
 8. [Crust of Rust: The Drop Check](./The%20Drop%20Check/Readme.md)
+9. [Crust of Rust: Atomics and Memory Ordering](./Atomics%20and%20Memory%20Ordering/Readme.md)
