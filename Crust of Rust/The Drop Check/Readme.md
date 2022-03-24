@@ -1,5 +1,3 @@
-# **[Crust of Rust: The Drop Check](https://youtu.be/TJOFSMpJdzg)**
-
 ## 方法
 
 1. **先看一遍视频**
@@ -180,55 +178,61 @@ Rust 现在的规则并不是十分明确，而且过于严格。但是存在一
 
 ## **笔记**
 
-1.  [0:00:00](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=0s) Introduction Drop Check 也是一个特别的概念，但是会比 Variance 出现的较多，大多数情况下都和 unsafe 代码开发有关。
-2.  [0:01:39](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=99s) Boks: A Norwegian Box 实现一个 Box 的包装 Boks。`Boks` 仅有一个字段 `p` 是一个指针类型 `p: *mut T` 。在新建 `Boks` ，使用 `Box::into_raw(Box::new(t))` 生成一个指针。
-3.  [0:04:22](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=262s) Freeing a Boks 清理 `Boks` ，因为新建了指针，但是从未清理，所以需要对 `Boks` 实现 Drop。
-4.  [0:05:56](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=356s) Dereferencing a Boks 为了使用 `Boks` ，需要实现 `Deref` 和 `DerefMut` 。
-5.  [0:09:40](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=580s) Boks is too restrictive 相比于 `Box` `Boks` 有更加严格的限制。
-    
-    下列代码将无法通过编译，但是实际上 `Boks` 中并不使用 `&mut y`，所以理论上这种使用应当是被允许的，实际上 `Box` 是能够支持这种实现。
-    
-    ```rust
-    let mut y = 42;
-    let b = Boks::ny(&mut y);
-    println!("{:?}", y);
-    ```
-    
-    错误提示中，提示 `y` 同时存在可变和不可变的引用，可能在 `Boks` 的 `Drop` 实现中访问了 `&mut y` ，即使我们知道实际上 `Drop` 实现中并不使用 `&mut y` 。编译器默认当一个范型类型实现了 `Drop` 的时候，编译器会推断 `Drop` 中实际上访问了范型数据，在这个例子中编译器就没有办法将 `&mut y` 的生命周期缩短，在函数最后清理 `b` 结束后， `&mut y` 的生命周期才结束，也就是这个时候 `&mut y` 和 `y` 的使用产生了重叠。
-    
-    绕过 Drop Check 的限制，在头部加上：`#![feature(dropck_eyepatch)]` 同时也要在 Drop 的实现中加上  `usafe` 和 `#[may_dangle]` ，例如：`unsafe impl<#[may_dangle] T> Drop for Boks<T> {}` 。这样上面的示例代码就能正常编译运行。
-    
-    这个方法并不是稳定的，rust 的开发者还没有确认到底最后的表现是如何的，这是一个权宜之计。
-    
-    对于一个类型为 &mut T 的，清理这个类型的时候，理论上清理一个可变引用并不是访问，因为只是放弃了引用，但是并不在乎 T 是不是也要一起被清理。
-    
-6.  [0:26:52](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=1612s) Boks is not restrictive enough 相比于 `Box` `Boks` 又存在不够严格的情况。
-    
-    考虑一个类型 `struct Oisann<T: Debug>(T)` ，这个类型也实现 `Drop` ，在 `drop` 中会访问 `T` ，具体访问使用就是打印出内部的 `T` ，考虑以下代码：
-    
-    ```rust
-    let mut z = 42;
-    let b = Boks::ny(Oisann(&mut z));
-    println!("{:?}", z);
-    drop(z);
-    println!("z dropped");
-    ```
-    
-    在 `b` 清理的时候，我们通过 `#[may_dangle]` 告知编译器我们绝对不会在 `drop` 内部使用 `T` ，在这里就是 `Oisann<T>` ，但是在这里 `Oisann<T>` 的 `drop` 内部使用了 `T` ，也就是说实际上当 `Oisann(&mut z)` 被清理的时候，`drop` 内部还是访问了内部数据，虽然是通过内部数据的 `drop` 间接的访问，也就是说我们违反了我们自己的约定。上面这个代码，在这个情况中会正常运行，输出大致上是这样的。
-    
-    ```rust
-    42
-    z droppped
-    42
-    ```
-    
-    第一个 `42` 是来自直接对 `y` 的打印，第二个 `42` 则是 `Oisann` 在清理时的打印，很明显这里产生了对悬空指针的访问，这是内存不安全的。为什么会出现这种情况呢？在添加 `#[may_dangle]` 后，编译器认为我们不会对内部的 `T` 做任何事情，包括清理 `T` ，所以 Drop Cheker 也就不会检查生命周期，但是在这个例子中，我们需要清理 `T` ，我们需要考虑 `T` 的生命周期是否长于 `Boks` ，也就是 `z` 的生命周期是否长于 `Boks` 。因为 `Boks` 中的所有字段并不包含一个 `T` ，只有一个指向 `T` 的指针而已，所以需要增加一个字段，`_m: PhantomData<T>,` 这个字段能够起到告知编译器，在清理 `Boks` 的时候，需要清理 `T` ，这个字段有一个特殊的类型也就是 `PhantomData` ，这个类型是无长度的。。
-    
-7.  [0:35:35](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2135s) PhantomData and may_dangle
-    - `#[may_dangle]` 告知编译器不会访问 `T` 。
-    - `PhantomData<T>` 字段告知编译器需要清理 `T`
-8.  [0:36:32](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2192s) What if Oisann didn't touch T? 即使 `Oisann` 不访问 `T` ，但是因为显式的实现了 `Drop` ，所以编译器会默认 `Oisann` 的 `Drop` 实现中访问了 `T` ，所以这里要避免这个问题，可以继续给 `Oisann` 增加 `#[may_dangle]` ，或者直接删除 `Oisann` 的实 `Drop` 实现。
-9.  [0:38:10](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2290s) Boks isn't covariant!  [0:43:49](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2629s) Boks isn't covariant (in code)! 实现的 Boks 不是 `covariant` 的，因为字段 `p` 类型是 `*mut T` ，所以 `T` 不是 `covariant` 的。
+ [0:00:00](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=0s) Introduction Drop Check 也是一个特别的概念，但是会比 Variance 出现的较多，大多数情况下都和 unsafe 代码开发有关。
+
+### [0:01:39](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=99s) Boks 实现
+
+实现一个 Box 的包装 Boks。`Boks` 仅有一个字段 `p` 是一个指针类型 `p: *mut T` 。在新建 `Boks` ，使用 `Box::into_raw(Box::new(t))` 生成一个指针。
+
+1.  [0:04:22](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=262s) Freeing a Boks 清理 `Boks` ，因为新建了指针，但是从未清理，所以需要对 `Boks` 实现 Drop。
+2.  [0:05:56](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=356s) Dereferencing a Boks 为了使用 `Boks` ，需要实现 `Deref` 和 `DerefMut` 。
+
+### [0:09:40](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=580s) 相比于 `Box` `Boks` 有更加严格的限制
+
+下列代码将无法通过编译，但是实际上 `Boks` 中并不使用 `&mut y`，所以理论上这种使用应当是被允许的，实际上 `Box` 是能够支持这种实现。
+
+```rust
+let mut y = 42;
+let b = Boks::ny(&mut y);
+println!("{:?}", y);
+```
+
+错误提示中，提示 `y` 同时存在可变和不可变的引用，可能在 `Boks` 的 `Drop` 实现中访问了 `&mut y` ，即使我们知道实际上 `Drop` 实现中并不使用 `&mut y` 。编译器默认当一个范型类型实现了 `Drop` 的时候，编译器会推断 `Drop` 中实际上访问了范型数据，在这个例子中编译器就没有办法将 `&mut y` 的生命周期缩短，在函数最后清理 `b` 结束后， `&mut y` 的生命周期才结束，也就是这个时候 `&mut y` 和 `y` 的使用产生了重叠。
+
+绕过 Drop Check 的限制，在头部加上：`#![feature(dropck_eyepatch)]` 同时也要在 Drop 的实现中加上  `usafe` 和 `#[may_dangle]` ，例如：`unsafe impl<#[may_dangle] T> Drop for Boks<T> {}` 。这样上面的示例代码就能正常编译运行。
+
+这个方法并不是稳定的，rust 的开发者还没有确认到底最后的表现是如何的，这是一个权宜之计。
+
+对于一个类型为 &mut T 的，清理这个类型的时候，理论上清理一个可变引用并不是访问，因为只是放弃了引用，但是并不在乎 T 是不是也要一起被清理。
+
+### [0:26:52](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=1612s) 相比于 `Box` `Boks` 又存在不够严格的情况
+
+考虑一个类型 `struct Oisann<T: Debug>(T)` ，这个类型也实现 `Drop` ，在 `drop` 中会访问 `T` ，具体访问使用就是打印出内部的 `T` ，考虑以下代码：
+
+```rust
+let mut z = 42;
+let b = Boks::ny(Oisann(&mut z));
+println!("{:?}", z);
+drop(z);
+println!("z dropped");
+```
+
+在 `b` 清理的时候，我们通过 `#[may_dangle]` 告知编译器我们绝对不会在 `drop` 内部使用 `T` ，在这里就是 `Oisann<T>` ，但是在这里 `Oisann<T>` 的 `drop` 内部使用了 `T` ，也就是说实际上当 `Oisann(&mut z)` 被清理的时候，`drop` 内部还是访问了内部数据，虽然是通过内部数据的 `drop` 间接的访问，也就是说我们违反了我们自己的约定。上面这个代码，在这个情况中会正常运行，输出大致上是这样的。
+
+```rust
+42
+z droppped
+42
+```
+
+第一个 `42` 是来自直接对 `y` 的打印，第二个 `42` 则是 `Oisann` 在清理时的打印，很明显这里产生了对悬空指针的访问，这是内存不安全的。为什么会出现这种情况呢？在添加 `#[may_dangle]` 后，编译器认为我们不会对内部的 `T` 做任何事情，包括清理 `T` ，所以 Drop Cheker 也就不会检查生命周期，但是在这个例子中，我们需要清理 `T` ，我们需要考虑 `T` 的生命周期是否长于 `Boks` ，也就是 `z` 的生命周期是否长于 `Boks` 。因为 `Boks` 中的所有字段并不包含一个 `T` ，只有一个指向 `T` 的指针而已，所以需要增加一个字段，`_m: PhantomData<T>,` 这个字段能够起到告知编译器，在清理 `Boks` 的时候，需要清理 `T` ，这个字段有一个特殊的类型也就是 `PhantomData` ，这个类型是无长度的。。
+
+### [0:35:35](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2135s) PhantomData 和 may_dangle
+
+- `#[may_dangle]` 告知编译器不会访问 `T` 。
+- `PhantomData<T>` 字段告知编译器需要清理 `T`
+1.  [0:36:32](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2192s) What if Oisann didn't touch T? 即使 `Oisann` 不访问 `T` ，但是因为显式的实现了 `Drop` ，所以编译器会默认 `Oisann` 的 `Drop` 实现中访问了 `T` ，所以这里要避免这个问题，可以继续给 `Oisann` 增加 `#[may_dangle]` ，或者直接删除 `Oisann` 的实 `Drop` 实现。
+2.  [0:38:10](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2290s) Boks isn't covariant!  [0:43:49](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2629s) Boks isn't covariant (in code)! 实现的 Boks 不是 `covariant` 的，因为字段 `p` 类型是 `*mut T` ，所以 `T` 不是 `covariant` 的。
     
     示例代码：
     
@@ -245,51 +249,52 @@ Rust 现在的规则并不是十分明确，而且过于严格。但是存在一
     
     在这个示例代码中，`box1` 实际上有一个较短的生命周期 `‘a` ，而 `box2` 有一个较长的生命周期 `‘static` 。如果是 `invariant` 的，也就是当 `p` 的类型是 `*mut T` 时，这个代码无法正常编译。实际上 `Box` 是可以编译通过的，所以 `Box` 并不是 `invariant` 的，而是 `covariant` 。需要修改字段 `p` 的类型，使用类型 `NonNull<T>` 替换 `*mut T` ，在 `NonNull` 的文档中，明确说明了 `NonNull` 是 covariant 的。替换之后，编译就能够正常通过了。
     
-10.  [0:48:10](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2890s) PhantomData T without holding a T 不持有 `T` 的 `PhantomData`
-
+3.  [0:48:10](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=2890s) PhantomData T without holding a T 不持有 `T` 的 `PhantomData`
+    
     如果存在一个字段类型为 `PhantomData<fn() -> T >` ，单就这一个字段来说，T 是covariant 的，但是这个形式的 `PhantomData` 并不会告知编译器需要清理 `T` 。在我们的例子中不使用这个形式，是因为我们需要 Drop Checker 会在乎 T 。
     
-11.  [0:51:08](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=3068s) std::iter::Empty and variance [1:07:34](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=4054s) Why the Empty example compiles 
-    
-    空迭代器的 Variance ，在这里 Empty 中可以用字段 `PhantomData<fn() -> T >` 来实现，但是实际上 Empty 中使用的是 `PhantomData<T>` 。
-    
-    示例代码：
-    
-    ```rust
-    // Demo for std::iter::Empty
-    use std::iter::Empty;
-    let mut x = 42;
-    let mut empty_it: Empty<Oisann<&'static mut i32>> = Empty::default();
-    // struct Empty<T>(PhantomData<T>)
-    // let mut o: Option<Oisann<&'static mut i32>> = Some(Oisann(&mut x)); // <- this is wrong
-    let mut o = Some(Oisann(&mut x));
-    {
-        o /* ...<&'a mut i32> */ = empty_it.next(); /* return ...<&'static mut i32> */
-        // empty_it produce 'static lifetime get shorten
-    }
-    // &mut x drop before this
-    drop(o);
-    println!("{:?}", x);
-    drop(x);
-    // empty_it drop later is fine, because empty_it is never tied to the x
-    // empty_it will always produce the Oisann<&'static mut i32> this is also never tied to the x
-    // so this is fine
-    let _ = empty_it.next();
-    drop(empty_it);
-    ```
-    
-    根据我们的推论这个代码不应该通过编译，但是实际上却通过了编译。清理空迭代器的时候，因为迭代器的类型是 `Empty<T>(PhantomData<T>)` 那么也就会清理 `PhantomData<T>` 也就会清理 `T` 也就是 `Oisann<&mut i32>` ，在 `Oisann` 中访问了 `&mut i32` ，那么理论上应该编译失败，因为这里的确很有可能访问了悬空指针。
-    
-    但是实际上，编译是完全没问题的，这是因为虽然最后会清理 `T` ，但是这个 `T` 并没有和 `x` 存在真正的关联，也就是实际上这个空迭代器从头到尾都没有产生对 `T` 的引用，也就是不存在对 `x` 的引用，在中间的代码部分：
-    
-    ```rust
-    let mut o = Some(Oisann(&mut x));
-    {
-        o /* ...<&'a mut i32> */ = empty_it.next(); /* return ...<&'static mut i32> */
-        // empty_it produce 'static lifetime get shorten
-    }
-    ```
-    
-    因为 Empty 并不产生任何引用，也不持有任何数据，所以空迭代器可以声明自己的生命周期是 `‘static` ，并不实际产生，所以即使宣传可以产生，这也不会有人和影响。
-    
-    实际上虽然空迭代器产生了一个内部类型是 `&'static mut i32` 的东西（ `None` ），但是因为对于 `&’a mut T` 中， `‘a` 是 covariant 的，所以在这里产生的数据的生命周期被缩短到了变量 `o` 的生命周期，并不影响迭代器。空迭代器的生命周期并没有和 `x` 的生命周期产生绑定。
+
+### [0:51:08](https://www.youtube.com/watch?v=TJOFSMpJdzg&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=8&t=3068s) std::iter::Empty 和 Variance
+
+空迭代器的 Variance ，在这里 Empty 中可以用字段 `PhantomData<fn() -> T >` 来实现，但是实际上 Empty 中使用的是 `PhantomData<T>` 。
+
+示例代码：
+
+```rust
+// Demo for std::iter::Empty
+use std::iter::Empty;
+let mut x = 42;
+let mut empty_it: Empty<Oisann<&'static mut i32>> = Empty::default();
+// struct Empty<T>(PhantomData<T>)
+// let mut o: Option<Oisann<&'static mut i32>> = Some(Oisann(&mut x)); // <- this is wrong
+let mut o = Some(Oisann(&mut x));
+{
+    o /* ...<&'a mut i32> */ = empty_it.next(); /* return ...<&'static mut i32> */
+    // empty_it produce 'static lifetime get shorten
+}
+// &mut x drop before this
+drop(o);
+println!("{:?}", x);
+drop(x);
+// empty_it drop later is fine, because empty_it is never tied to the x
+// empty_it will always produce the Oisann<&'static mut i32> this is also never tied to the x
+// so this is fine
+let _ = empty_it.next();
+drop(empty_it);
+```
+
+根据我们的推论这个代码不应该通过编译，但是实际上却通过了编译。清理空迭代器的时候，因为迭代器的类型是 `Empty<T>(PhantomData<T>)` 那么也就会清理 `PhantomData<T>` 也就会清理 `T` 也就是 `Oisann<&mut i32>` ，在 `Oisann` 中访问了 `&mut i32` ，那么理论上应该编译失败，因为这里的确很有可能访问了悬空指针。
+
+但是实际上，编译是完全没问题的，这是因为虽然最后会清理 `T` ，但是这个 `T` 并没有和 `x` 存在真正的关联，也就是实际上这个空迭代器从头到尾都没有产生对 `T` 的引用，也就是不存在对 `x` 的引用，在中间的代码部分：
+
+```rust
+let mut o = Some(Oisann(&mut x));
+{
+    o /* ...<&'a mut i32> */ = empty_it.next(); /* return ...<&'static mut i32> */
+    // empty_it produce 'static lifetime get shorten
+}
+```
+
+因为 Empty 并不产生任何引用，也不持有任何数据，所以空迭代器可以声明自己的生命周期是 `‘static` ，并不实际产生，所以即使宣传可以产生，这也不会有人和影响。
+
+实际上虽然空迭代器产生了一个内部类型是 `&'static mut i32` 的东西（ `None` ），但是因为对于 `&’a mut T` 中， `‘a` 是 covariant 的，所以在这里产生的数据的生命周期被缩短到了变量 `o` 的生命周期，并不影响迭代器。空迭代器的生命周期并没有和 `x` 的生命周期产生绑定。
