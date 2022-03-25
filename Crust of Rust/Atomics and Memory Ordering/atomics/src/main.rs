@@ -27,13 +27,20 @@ impl<T> Mutex<T> {
         // other therad could run between those two atomic operation
 
         // with compare_exchange this will run way slow,
-        // because every loop check acquire access the unshared memory to try to write the new value
+        // because every loop check acquire exclusive access the memory to try to write the new value,
+        // there is much more coordination between CPUs,
+        // MESI protocol see: https://en.wikipedia.org/wiki/MESI_protocol
         // but there is much less chance that the test will failed
         while self
             .lock
             .compare_exchange(UNLOCKED, LOCKED, Relaxed, Relaxed)
             .is_err()
-        {}
+        {
+            // add a layer of loops to prevent each attempt to gain exclusive access to memory
+            // this will run much quicker now.
+            while self.lock.load(Relaxed) == LOCKED {}
+        }
+        // Safety: we hold the lock, therefore we can create a mutable reference.
         let ret = f(unsafe { &mut *self.v.get() });
         self.lock.store(UNLOCKED, Ordering::Relaxed);
         ret
