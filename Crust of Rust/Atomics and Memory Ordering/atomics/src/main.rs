@@ -1,6 +1,6 @@
 use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::Ordering::{self, AcqRel, Acquire, Relaxed, Release, SeqCst};
 
 const UNLOCKED: bool = false;
 const LOCKED: bool = true;
@@ -21,8 +21,19 @@ impl<T> Mutex<T> {
     }
 
     pub fn with_lock<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
-        while self.lock.load(Ordering::Relaxed) != UNLOCKED {}
-        self.lock.store(LOCKED, Ordering::Relaxed);
+        // while self.lock.load(Ordering::Relaxed) != UNLOCKED {}
+        // self.lock.store(LOCKED, Ordering::Relaxed);
+        // with load and store two atomic operation,
+        // other therad could run between those two atomic operation
+
+        // with compare_exchange this will run way slow,
+        // because every loop check acquire access the unshared memory to try to write the new value
+        // but there is much less chance that the test will failed
+        while self
+            .lock
+            .compare_exchange(UNLOCKED, LOCKED, Relaxed, Relaxed)
+            .is_err()
+        {}
         let ret = f(unsafe { &mut *self.v.get() });
         self.lock.store(UNLOCKED, Ordering::Relaxed);
         ret
@@ -34,6 +45,7 @@ fn main() {
 }
 
 #[test]
+#[should_panic]
 fn test_load_and_store() {
     use std::thread::spawn;
     // use Box to create a sendable data
