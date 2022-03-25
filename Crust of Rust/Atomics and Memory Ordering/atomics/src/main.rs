@@ -31,9 +31,12 @@ impl<T> Mutex<T> {
         // there is much more coordination between CPUs,
         // MESI protocol see: https://en.wikipedia.org/wiki/MESI_protocol
         // but there is much less chance that the test will failed
+
+        // use compare_exchange_weak to replace compare_exchange,
+        // because on some platform this will gain performance
         while self
             .lock
-            .compare_exchange(UNLOCKED, LOCKED, Relaxed, Relaxed)
+            .compare_exchange_weak(UNLOCKED, LOCKED, Relaxed, Relaxed)
             .is_err()
         {
             // add a layer of loops to prevent each attempt to gain exclusive access to memory
