@@ -34,9 +34,11 @@ impl<T> Mutex<T> {
 
         // use compare_exchange_weak to replace compare_exchange,
         // because on some platform this will gain performance
+
+        // when success change oredering to Acquire
         while self
             .lock
-            .compare_exchange_weak(UNLOCKED, LOCKED, Relaxed, Relaxed)
+            .compare_exchange_weak(UNLOCKED, LOCKED, Acquire, Relaxed)
             .is_err()
         {
             // add a layer of loops to prevent each attempt to gain exclusive access to memory
@@ -45,7 +47,8 @@ impl<T> Mutex<T> {
         }
         // Safety: we hold the lock, therefore we can create a mutable reference.
         let ret = f(unsafe { &mut *self.v.get() });
-        self.lock.store(UNLOCKED, Ordering::Relaxed);
+        // change ordering to Release to make sure all access before release the lock
+        self.lock.store(UNLOCKED, Release);
         ret
     }
 }
