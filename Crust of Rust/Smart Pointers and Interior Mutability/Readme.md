@@ -28,7 +28,7 @@
 
 1. SmartPointer 智能指针
     1. Arc/Rc/Deref
-2. Interior Mutability 内部可变形数据结构
+2. Interior Mutability 内部可变数据结构
     1. RefCell/Mutex/Cell
 3. 不同类型的 Interior Mutability 类型的使用要求和场景是什么
 4. Box 不提供 Interior Mutability
