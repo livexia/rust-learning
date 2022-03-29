@@ -102,3 +102,29 @@ fn too_relaxed() {
     assert_eq!(r1, 42);
     assert_eq!(r2, 42);
 }
+
+#[test]
+fn seq_cst() {
+    let x: &'static _ = Box::leak(Box::new(AtomicBool::new(false)));
+    let y: &'static _ = Box::leak(Box::new(AtomicBool::new(false)));
+    let z: &'static _ = Box::leak(Box::new(AtomicUsize::new(0)));
+
+    let _tx = spawn(move || x.store(true, Release));
+    let _ty = spawn(move || y.store(true, Release));
+    let t1 = spawn(move || {
+        while !x.load(Acquire) {}
+        if y.load(Acquire) {
+            z.fetch_add(1, Relaxed);
+        }
+    });
+    let t2 = spawn(move || {
+        while !y.load(Acquire) {}
+        if x.load(Acquire) {
+            z.fetch_add(1, Relaxed);
+        }
+    });
+    t1.join().unwrap();
+    t2.join().unwrap();
+
+    let z = z.load(SeqCst);
+}
