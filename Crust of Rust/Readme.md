@@ -2,13 +2,13 @@
 
 ## 概要
 
-Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9DegC5cQQ)的一个直播系列，主要关注点在于Rust中较为重要的技术点，通过学习这个直播系列，我可以对Rust的知识点和技术点有更为完整的认知。本来预期是50小时能够学完的，但是学到一半就已经花了45小时了，所以我估计还需要50小时吧。
+Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9DegC5cQQ)的一个直播系列，主要关注点在于Rust中较为重要的技术点，通过学习这个直播系列，我可以对Rust的知识点和技术点有更为完整的认知。本来预期是50小时能够学完的，但是学到一半就已经花了45小时了，所以我估计还需要50小时吧。这个部分的内容，需要不断的翻出来回顾，每个部分都值得一本书的内容，这些简单的学习实际上是学习压缩的内容，如果一次学完没有回顾，那么会很容易忘记。
 
 **播放列表链接：[Crust of Rust](https://www.youtube.com/watch?v=rAl-9HwD858&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa)**
 
 **难度：中上水平**
 
-**耗时：57h55min**
+**耗时：70h55min**
 
 **进度：Crust of Rust: Atomics and Memory Ordering**
 
@@ -16,6 +16,12 @@ Crust of Rust是[Jon Gjengset](https://www.youtube.com/channel/UC_iD0xppBwwsrM9D
 
 1. **先看一遍视频，然后自己脱离视频实现视频中的演示内容，再重新看一遍视频。**
 2. 需要详细记录和统计学习时间。
+
+## 加强学习
+
+记录需要目前的学习只实现了部分的理解，未来加强学习的内容。
+
+1. Atomics and Memory Ordering
 
 ## 学习记录
 1. [Crust of Rust: Lifetime Annotations](./Lifetime%20Annotations/Readme.md)
