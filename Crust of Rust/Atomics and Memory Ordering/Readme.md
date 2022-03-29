@@ -10,11 +10,11 @@
 
 ## 进度
 
-**耗时： 13h**
+**耗时： 14h10min**
 
 1. 2h50min，这个知识点过于丰富了，第一遍视频只能让我了解一个大概，很多的内容只能听到，但是无法理解。
 2. 4h40min，只是简单的完成了视频中的自旋锁的实践，阅读了 Rust 中关于 Atomic、Ordering 的内容，阅读了 Nomicon 中 Atomics 的部分。本来计划进行的 C++ 、LLVM 和更多博客文章的阅读被我搁置了。因为这部分过于丰富，有一点不知如何下手，感觉通过这短短的时间无法掌握所有的内容，反而产生了拖延（2天），那么只好先搁置了，否则这个系列又将被搁置。
-3. 5h30min，完成第二遍视频，对部分材料进行了重新阅读。整个部分花费了 5 天，在这种复杂和困难的点上，我的拖延更加明显，达到这个理解我自己认为已经可以接受了。
+3. 6h40min，完成第二遍视频，对部分材料进行了重新阅读。整个部分花费了 5 天，在这种复杂和困难的点上，我的拖延更加明显，达到这个理解我自己认为已经可以接受了。
 
 ## 总结
 
@@ -53,10 +53,10 @@
     5. SeqCst 这个非常非常复杂
     6. 这其中的测试并不一定，ARM 和 x86 具体的实现就存在差异，导致可能失败的错误在某一个平台保成功。
 12. fetch_ 方法
-13. modification value （CPU）
+13. modification order （CPU）
 14. ThreadSanitizer
 15. loom
-16. Memory  Barrier
+16. fence
 
 ## **参考**
 
@@ -602,6 +602,40 @@ fn seq_cst() {
 `SeqCst` 是最为严格的限制，同时需要最大的开销，所以如果不理解可能存在的错误，那么最好使用 `SeqCst` 。
 
 最好能够阅读一些并行的数据结构的论文，看看这些论文在什么场景中使用 `SeqCst` 。
+
+这个问题不断的困扰着我，即使我决定让心中的疑惑流走，很可惜没办法。C++ reference 的例子和视频中的一摸一样，但是没能更好的解释为什么 `Acquire`/`Release` 不行，我决定从谷歌寻找答案。找到了很多对这个问题的讨论，我也重新看了 YouTube 视频下的评论，贴上链接并不表示我都看完这些了，大部分都是简单阅读。
+
+我的问题是，在这个测试中，`tx` 和 `t1` 存在 happens-before 关系， `ty` 和 `t2` 存在 happens-before 关系，但是 `ty` 和 `t1` 并不存在这种关系，为什么？
+
+我的理解是，对于一个线程来说，happens-before 关系只能建立一次，如果是这样，那么 `z` 最后可能为 0 也就是好理解的了。以下内容是链接1 中的中文翻译：
+
+`x` 和 `y` 是由不同的线程写入的，所以在 `t1` 和 `t2` 中的 `if` 的语句中的 `Acquire` 是没有起到作用。如果要 `Acquire` 和 `Release` 起作用，那么需要 `x` 的写入和 `y` 的写入在同一个线程中，也就是将 `tx` 和 `ty` 和一，这种情况下 `Acquire` 和 `Release` 的约束就足够了。
+
+> In this case, the assert (#3) can fire (just like in the relaxed-ordering case) because it’s possible for both the load of x (#2) and the load of y (#1) to read false. x and y are written by different threads, so the ordering from the release to the acquire in each case has no effect on the operations in the other threads.
+> 
+
+> Figure 4 shows the happens-before relationships from listing 4, along with a possible outcome where the two reading threads each have a different view of the world. This is possible because there’s no happens-before relationship to force an ordering, as described previously.
+> 
+
+![https://www.developerfusion.com/res/content/138018/cia4.png](https://www.developerfusion.com/res/content/138018/cia4.png)
+
+> *Figure 4: Acquire-release And Happens-before*
+> 
+
+> In order to see the benefit of acquire-release ordering, you need to consider two stores from the same thread, as in listing 2. If you change the store to y to use memory_order_release and the load from y to use memory_order_acquire as in the following listing, then you actually impose an ordering on the operations on x.
+> 
+
+链接：
+
+1. [https://www.developerfusion.com/article/138018/memory-ordering-for-atomic-operations-in-c0x/](https://www.developerfusion.com/article/138018/memory-ordering-for-atomic-operations-in-c0x/)
+2. [https://stackoverflow.com/questions/18677139/acquire-release-operation-of-c11atomic](https://stackoverflow.com/questions/18677139/acquire-release-operation-of-c11atomic)
+3. [https://stackoverflow.com/questions/48383867/acquire-release-semantics-with-4-threads](https://stackoverflow.com/questions/48383867/acquire-release-semantics-with-4-threads)
+4. [https://stackoverflow.com/questions/27807118/will-two-atomic-writes-to-different-locations-in-different-threads-always-be-see/50679223#50679223](https://stackoverflow.com/questions/27807118/will-two-atomic-writes-to-different-locations-in-different-threads-always-be-see/50679223#50679223)
+5. [https://stackoverflow.com/questions/63519762/c-memory-order-acquire-release-questions](https://stackoverflow.com/questions/63519762/c-memory-order-acquire-release-questions)
+6. [https://stackoverflow.com/questions/48963559/how-stdmemory-order-seq-cst-works](https://stackoverflow.com/questions/48963559/how-stdmemory-order-seq-cst-works)
+7. [https://www.informatik.hu-berlin.de/de/forschung/gebiete/sam/Lehre/modernes-c-spezialvorlesung/Cpp11 Materialien/cpp11_9](https://www.informatik.hu-berlin.de/de/forschung/gebiete/sam/Lehre/modernes-c-spezialvorlesung/Cpp11%20Materialien/cpp11_9)
+8. [https://www.gsd.inesc-id.pt/~mcouceiro/eurotm/htdc2014/wong.pdf](https://www.gsd.inesc-id.pt/~mcouceiro/eurotm/htdc2014/wong.pdf)
+9. [https://www.cl.cam.ac.uk/~pes20/cpp/popl085ap-sewell.pdf](https://www.cl.cam.ac.uk/~pes20/cpp/popl085ap-sewell.pdf)
 
 ### 如何测试 [2:00:40](https://www.youtube.com/watch?v=rMGWeSjctlY&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=9&t=7240s) ThreadSanitizer [2:05:49](https://www.youtube.com/watch?v=rMGWeSjctlY&list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa&index=9&t=7549s) loom
 
