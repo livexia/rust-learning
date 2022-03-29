@@ -1,6 +1,7 @@
 use std::cell::UnsafeCell;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{self, AcqRel, Acquire, Relaxed, Release, SeqCst};
+use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::thread::spawn;
 
 const UNLOCKED: bool = false;
 const LOCKED: bool = true;
@@ -78,4 +79,26 @@ fn test_load_and_store() {
         handle.join().unwrap();
     }
     assert_ne!(m.with_lock(|v| *v), 1000 * 1000);
+}
+
+#[test]
+#[should_panic]
+fn too_relaxed() {
+    let x: &'static _ = Box::leak(Box::new(AtomicUsize::new(0)));
+    let y: &'static _ = Box::leak(Box::new(AtomicUsize::new(0)));
+    let t1 = spawn(move || {
+        let r1 = y.load(Relaxed); // A
+        x.store(r1, Relaxed); // B
+        r1
+    });
+    let t2 = spawn(move || {
+        let r2 = x.load(Relaxed); // C
+        y.store(42, Relaxed); // D
+        r2
+    });
+    let r1 = t1.join().unwrap();
+    let r2 = t2.join().unwrap();
+    // r1 == r2 == 42
+    assert_eq!(r1, 42);
+    assert_eq!(r2, 42);
 }
