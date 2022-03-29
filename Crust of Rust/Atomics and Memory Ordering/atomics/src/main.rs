@@ -109,17 +109,17 @@ fn seq_cst() {
     let y: &'static _ = Box::leak(Box::new(AtomicBool::new(false)));
     let z: &'static _ = Box::leak(Box::new(AtomicUsize::new(0)));
 
-    let _tx = spawn(move || x.store(true, Release));
-    let _ty = spawn(move || y.store(true, Release));
+    let _tx = spawn(move || x.store(true, SeqCst));
+    let _ty = spawn(move || y.store(true, SeqCst));
     let t1 = spawn(move || {
-        while !x.load(Acquire) {}
-        if y.load(Acquire) {
+        while !x.load(SeqCst) {}
+        if y.load(SeqCst) {
             z.fetch_add(1, Relaxed);
         }
     });
     let t2 = spawn(move || {
-        while !y.load(Acquire) {}
-        if x.load(Acquire) {
+        while !y.load(SeqCst) {}
+        if x.load(SeqCst) {
             z.fetch_add(1, Relaxed);
         }
     });
