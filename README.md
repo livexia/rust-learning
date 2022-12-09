@@ -4,6 +4,12 @@ learning rust by go through some examples
 ## [Crust of Rust](./Crust%20of%20Rust/Readme.md)
 Crust of Rust是Jon Gjengset的一个直播系列，主要关注点在于Rust中较为重要的技术点，通过学习这个直播系列，我可以对Rust的知识点和技术点有更为完整的认知。
 
+## Practice
+
+包含补上的 Advent of Code 代码，以及其他的小练习
+
+- Advent of Code 2018
+- Advent of Code 2020 (ToDo)
 
 ## [Operating System development tutorials in Rust on the Raspberry Pi](./rust-raspberrypi-OS-tutorials-note/README.md)
 ### 目标
