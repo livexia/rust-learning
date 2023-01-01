@@ -97,7 +97,7 @@ impl FromStr for Passport {
         let mut passport = Passport::new();
         let lines = s.split([' ', '\n']);
         for line in lines {
-            if let Some((field, value)) = line.split_once(":") {
+            if let Some((field, value)) = line.split_once(':') {
                 passport.add_field(field, value.to_string())?;
             }
         }
@@ -107,7 +107,7 @@ impl FromStr for Passport {
 
 fn byr(s: String) -> Option<String> {
     if let Ok(year) = s.parse::<usize>() {
-        if year >= 1920 && year <= 2002 {
+        if (1920..=2002).contains(&year) {
             return Some(s);
         }
     }
@@ -116,7 +116,7 @@ fn byr(s: String) -> Option<String> {
 
 fn iyr(s: String) -> Option<String> {
     if let Ok(year) = s.parse::<usize>() {
-        if year >= 2010 && year <= 2020 {
+        if (2010..=2020).contains(&year) {
             return Some(s);
         }
     }
@@ -125,7 +125,7 @@ fn iyr(s: String) -> Option<String> {
 
 fn eyr(s: String) -> Option<String> {
     if let Ok(year) = s.parse::<usize>() {
-        if year >= 2020 && year <= 2030 {
+        if (2020..=2030).contains(&year) {
             return Some(s);
         }
     }
@@ -135,13 +135,13 @@ fn eyr(s: String) -> Option<String> {
 fn hgt(s: String) -> Option<String> {
     if let Some(h) = s.strip_suffix("cm") {
         if let Ok(h) = h.parse::<usize>() {
-            if h >= 150 && h <= 193 {
+            if (150..=193).contains(&h) {
                 return Some(s);
             }
         }
     } else if let Some(h) = s.strip_suffix("in") {
         if let Ok(h) = h.parse::<usize>() {
-            if h >= 59 && h <= 76 {
+            if (59..76).contains(&h) {
                 return Some(s);
             }
         }
@@ -150,7 +150,7 @@ fn hgt(s: String) -> Option<String> {
 }
 
 fn hcl(s: String) -> Option<String> {
-    if let Some(c) = s.strip_prefix("#") {
+    if let Some(c) = s.strip_prefix('#') {
         if s.len() == 7
             && c.chars()
                 .all(|b| b.is_numeric() | (b'a'..=b'f').any(|b1| b1 == b as u8))

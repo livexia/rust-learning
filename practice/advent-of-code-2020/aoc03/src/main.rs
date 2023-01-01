@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::io::{self, Read, Write};
 
+#[allow(unused_macros)]
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) }
 }
@@ -12,11 +13,7 @@ fn main() -> Result<()> {
     io::stdin().read_to_string(&mut input)?;
     let grid_pattern: Vec<Vec<bool>> = input
         .lines()
-        .map(|l| {
-            l.chars()
-                .map(|c| if c == '.' { false } else { true })
-                .collect()
-        })
+        .map(|l| l.chars().map(|c| c != '.').collect())
         .collect();
 
     part1(&grid_pattern)?;
@@ -38,7 +35,7 @@ fn part2(grid: &[Vec<bool>]) -> Result<()> {
     let result = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)]
         .iter()
         .fold(1, |r, &(right, down)| {
-            dbg!(slopes(grid, right, down));
+            // dbg!(slopes(grid, right, down));
             r * slopes(grid, right, down)
         });
     writeln!(
