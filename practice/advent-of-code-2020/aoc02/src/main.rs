@@ -67,8 +67,8 @@ impl FromStr for Line {
     fn from_str(s: &str) -> Result<Self> {
         if let Some((policy, password)) = s.split_once(": ") {
             let password = password.to_string();
-            if let Some((range, letter)) = policy.split_once(" ") {
-                if let Some((start, end)) = range.split_once("-") {
+            if let Some((range, letter)) = policy.split_once(' ') {
+                if let Some((start, end)) = range.split_once('-') {
                     let range: (usize, usize) = (start.parse()?, end.parse()?);
                     if let Some(letter) = letter.chars().next() {
                         return Ok(Self {

@@ -41,8 +41,7 @@ fn part2(report: &[i32]) -> Result<()> {
     for i in 0..l {
         let sum = 2020 - report[i];
         let mut set = HashSet::new();
-        for j in i + 1..l {
-            let entry = report[j];
+        for entry in report.iter().skip(i + 1) {
             if set.contains(&(sum - entry)) {
                 writeln!(
                     io::stdout(),
