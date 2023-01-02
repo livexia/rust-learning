@@ -24,7 +24,8 @@ fn part1(input: &str) -> Result<u32> {
     let groups = parse_input(input);
     let result: u32 = groups
         .iter()
-        .map(|g| bit_count(g.iter().fold(0, |bits, b| bits | b)))
+        .map(|g| g.iter().fold(0, |bits, b| bits | b))
+        .map(bit_count)
         .sum();
 
     writeln!(io::stdout(), "Part1: {result}")?;
@@ -38,7 +39,8 @@ fn part2(input: &str) -> Result<u32> {
     let groups = parse_input(input);
     let result: u32 = groups
         .iter()
-        .map(|g| bit_count(g.iter().fold(0xffffffff, |bits, b| bits & b)))
+        .map(|g| g.iter().fold(0xffffffff, |bits, b| bits & b))
+        .map(bit_count)
         .sum();
 
     writeln!(io::stdout(), "Part2: {result}")?;
@@ -49,9 +51,7 @@ fn part2(input: &str) -> Result<u32> {
 fn bit_count(mut num: u32) -> u32 {
     let mut counter = 0;
     while num != 0 {
-        if num & 1 == 1 {
-            counter += 1;
-        }
+        counter += num & 1;
         num >>= 1;
     }
     counter
