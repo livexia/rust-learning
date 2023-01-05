@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::error::Error;
 use std::io::{self, Read, Write};
+
 use std::time::Instant;
 
 macro_rules! err {
@@ -16,7 +17,7 @@ fn main() -> Result<()> {
     let input: Vec<Int> = input.lines().map(|l| l.trim().parse().unwrap()).collect();
 
     part1(&input, 25)?;
-    // part2()?;
+    part2(&input, 25)?;
     Ok(())
 }
 
@@ -37,6 +38,38 @@ fn part1(input: &[Int], length: usize) -> Result<Int> {
     writeln!(io::stdout(), "Part 1: {}", result.unwrap())?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result.unwrap())
+}
+
+fn part2(input: &[Int], length: usize) -> Result<Int> {
+    let start = Instant::now();
+
+    let target = part1(input, length)?;
+    let mut result = 0;
+
+    let mut left = 0;
+    let mut right = 0;
+    let mut sum = 0;
+    while right < input.len() {
+        match sum.cmp(&target) {
+            std::cmp::Ordering::Less => {
+                sum += input[right];
+                right += 1;
+            }
+            std::cmp::Ordering::Equal => {
+                result = input[left..right].iter().min().unwrap()
+                    + input[left..right].iter().max().unwrap();
+                break;
+            }
+            std::cmp::Ordering::Greater => {
+                sum -= input[left];
+                left += 1;
+            }
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
 }
 
 fn follow_the_rule(preamble: &[Int], num: Int) -> bool {
@@ -74,4 +107,5 @@ fn example_input() {
     576";
     let input: Vec<Int> = input.lines().map(|l| l.trim().parse().unwrap()).collect();
     assert_eq!(part1(&input, 5).unwrap(), 127);
+    assert_eq!(part2(&input, 5).unwrap(), 62);
 }
