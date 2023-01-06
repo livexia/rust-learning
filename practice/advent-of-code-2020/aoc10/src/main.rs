@@ -62,14 +62,14 @@ fn part2(jolts: &[usize]) -> Result<usize> {
     Ok(result)
 }
 
-fn dfs(jolts: &[usize], cur: usize, visited: &mut HashMap<usize, usize>) -> usize {
-    if let Some(counter) = visited.get(&cur) {
+fn dfs(jolts: &[usize], cur: usize, cache: &mut HashMap<usize, usize>) -> usize {
+    if let Some(counter) = cache.get(&cur) {
         return *counter;
     }
     let mut counter = 0;
     for i in cur + 1..jolts.len() {
         if jolts[i] - jolts[cur] < 4 && jolts[i] - jolts[cur] > 0 {
-            counter += dfs(jolts, i, visited);
+            counter += dfs(jolts, i, cache);
         } else {
             break;
         }
@@ -77,7 +77,7 @@ fn dfs(jolts: &[usize], cur: usize, visited: &mut HashMap<usize, usize>) -> usiz
     if cur == jolts.len() - 1 {
         counter += 1;
     }
-    visited.insert(cur, counter);
+    cache.insert(cur, counter);
     counter
 }
 
@@ -135,10 +135,7 @@ fn example_input() {
     let mut jolts: Vec<usize> = input.lines().map(|l| l.trim().parse().unwrap()).collect();
     jolts.push(0);
     jolts.sort();
-
-    dbg!(jolts.len());
     jolts.dedup();
-    dbg!(jolts.len());
     assert_eq!(part1(&jolts).unwrap(), 220);
     assert_eq!(part2(&jolts).unwrap(), 19208);
 }
