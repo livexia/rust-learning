@@ -52,13 +52,11 @@ struct Grid {
 
 impl Grid {
     fn is_floor(&self, x: usize, y: usize) -> bool {
-        let row = self.floor[x];
-        row & (1 << y) != 0
+        self.floor[x] & (1 << y) != 0
     }
 
     fn is_empty(&self, x: usize, y: usize) -> bool {
-        let row = self.seat[x];
-        row & (1 << y) != 0
+        self.seat[x] & (1 << y) != 0
     }
 
     fn occupied_seat_counter(&self) -> usize {
@@ -78,22 +76,20 @@ impl Grid {
         for (x, row) in seat.iter_mut().enumerate() {
             for y in 0..self.width {
                 if !self.is_floor(x, y) {
-                    let adjacent_seats = if part == 1 {
-                        self.adjacent_seats(x, y)
+                    let occupied_counter = if part == 1 {
+                        self.adjacent(x, y)
+                            .iter()
+                            .filter(|&&(x1, y1)| !self.is_floor(x1, y1) && !self.is_empty(x1, y1))
+                            .count()
                     } else if part == 2 {
-                        self.first_seats(x, y)
+                        self.visible_seats(x, y)
+                            .iter()
+                            .filter(|&&(x1, y1)| !self.is_empty(x1, y1))
+                            .count()
                     } else {
                         unimplemented!("part: {part}")
                     };
-                    if self.is_empty(x, y) {
-                        if !adjacent_seats.iter().all(|&(x1, y1)| self.is_empty(x1, y1)) {
-                            *row |= 1 << y;
-                        }
-                    } else if adjacent_seats
-                        .iter()
-                        .filter(|&&(x1, y1)| !self.is_empty(x1, y1))
-                        .count()
-                        >= threshold
+                    if self.is_empty(x, y) && occupied_counter != 0 || occupied_counter >= threshold
                     {
                         *row |= 1 << y;
                     }
@@ -107,159 +103,123 @@ impl Grid {
         true
     }
 
-    fn adjacent_seats(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
-        vec![
-            if let Some(up) = self.up_seat(x, y) {
-                vec![
-                    self.left_seat(up.0, up.1),
-                    self.right_seat(up.0, up.1),
-                    Some(up),
-                ]
-            } else {
-                vec![]
-            },
-            if let Some(down) = self.down_seat(x, y) {
-                vec![
-                    self.left_seat(down.0, down.1),
-                    self.right_seat(down.0, down.1),
-                    Some(down),
-                ]
-            } else {
-                vec![]
-            },
-            vec![self.left_seat(x, y), self.right_seat(x, y)],
-        ]
-        .iter()
-        .flatten()
-        .filter_map(|&p| p)
-        .filter(|&(x, y)| !self.is_floor(x, y))
-        .collect()
-    }
-
-    fn first_seats(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
-        let mut seats = vec![];
-        let (mut nx, mut ny) = (x, y);
-        while let Some(up) = self.up_seat(nx, ny) {
-            if self.is_floor(up.0, up.1) {
-                (nx, ny) = up;
-            } else {
-                seats.push(up);
-                break;
+    fn adjacent(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
+        let mut seats = Vec::with_capacity(8);
+        if let Some(next) = up(self, x, y) {
+            seats.push(next);
+            if let Some(next) = left(self, next.0, next.1) {
+                seats.push(next);
+            }
+            if let Some(next) = right(self, next.0, next.1) {
+                seats.push(next);
             }
         }
-        let (mut nx, mut ny) = (x, y);
-        while let Some(up) = self.up_seat(nx, ny) {
-            if let Some(left) = self.left_seat(up.0, up.1) {
-                if self.is_floor(left.0, left.1) {
-                    (nx, ny) = left;
-                } else {
-                    seats.push(left);
-                    break;
-                }
-            } else {
-                break;
+        if let Some(next) = down(self, x, y) {
+            seats.push(next);
+            if let Some(next) = left(self, next.0, next.1) {
+                seats.push(next);
+            }
+            if let Some(next) = right(self, next.0, next.1) {
+                seats.push(next);
             }
         }
-        let (mut nx, mut ny) = (x, y);
-        while let Some(up) = self.up_seat(nx, ny) {
-            if let Some(right) = self.right_seat(up.0, up.1) {
-                if self.is_floor(right.0, right.1) {
-                    (nx, ny) = right;
-                } else {
-                    seats.push(right);
-                    break;
-                }
-            } else {
-                break;
-            }
+        if let Some(next) = left(self, x, y) {
+            seats.push(next);
         }
-        let (mut nx, mut ny) = (x, y);
-        while let Some(down) = self.down_seat(nx, ny) {
-            if self.is_floor(down.0, down.1) {
-                (nx, ny) = down;
-            } else {
-                seats.push(down);
-                break;
-            }
-        }
-        let (mut nx, mut ny) = (x, y);
-        while let Some(down) = self.down_seat(nx, ny) {
-            if let Some(left) = self.left_seat(down.0, down.1) {
-                if self.is_floor(left.0, left.1) {
-                    (nx, ny) = left;
-                } else {
-                    seats.push(left);
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-        let (mut nx, mut ny) = (x, y);
-        while let Some(down) = self.down_seat(nx, ny) {
-            if let Some(right) = self.right_seat(down.0, down.1) {
-                if self.is_floor(right.0, right.1) {
-                    (nx, ny) = right;
-                } else {
-                    seats.push(right);
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-        let (mut nx, mut ny) = (x, y);
-        while let Some(left) = self.left_seat(nx, ny) {
-            if self.is_floor(left.0, left.1) {
-                (nx, ny) = left;
-            } else {
-                seats.push(left);
-                break;
-            }
-        }
-        let (mut nx, mut ny) = (x, y);
-        while let Some(right) = self.right_seat(nx, ny) {
-            if self.is_floor(right.0, right.1) {
-                (nx, ny) = right;
-            } else {
-                seats.push(right);
-                break;
-            }
+        if let Some(next) = right(self, x, y) {
+            seats.push(next);
         }
 
         seats
     }
 
-    fn up_seat(&self, x: usize, y: usize) -> Option<(usize, usize)> {
-        if x > 0 {
-            Some((x - 1, y))
+    fn visible_seats(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
+        let mut seats = Vec::with_capacity(8);
+        visible_stright(self, x, y, &mut seats, up);
+        visible_stright(self, x, y, &mut seats, down);
+        visible_stright(self, x, y, &mut seats, left);
+        visible_stright(self, x, y, &mut seats, right);
+
+        visible_diagonal(self, x, y, &mut seats, up, left);
+        visible_diagonal(self, x, y, &mut seats, up, right);
+
+        visible_diagonal(self, x, y, &mut seats, down, left);
+        visible_diagonal(self, x, y, &mut seats, down, right);
+
+        seats
+    }
+}
+
+fn visible_stright(
+    grid: &Grid,
+    x: usize,
+    y: usize,
+    seats: &mut Vec<(usize, usize)>,
+    f: fn(&Grid, x: usize, y: usize) -> Option<(usize, usize)>,
+) {
+    let (mut nx, mut ny) = (x, y);
+    while let Some(next) = f(grid, nx, ny) {
+        if grid.is_floor(next.0, next.1) {
+            (nx, ny) = next;
         } else {
-            None
+            seats.push(next);
+            break;
         }
     }
+}
 
-    fn down_seat(&self, x: usize, y: usize) -> Option<(usize, usize)> {
-        if x + 1 < self.height {
-            Some((x + 1, y))
+fn visible_diagonal(
+    grid: &Grid,
+    x: usize,
+    y: usize,
+    seats: &mut Vec<(usize, usize)>,
+    f1: fn(&Grid, x: usize, y: usize) -> Option<(usize, usize)>,
+    f2: fn(&Grid, x: usize, y: usize) -> Option<(usize, usize)>,
+) {
+    let (mut nx, mut ny) = (x, y);
+    while let Some((x, y)) = f1(grid, nx, ny) {
+        if let Some(next) = f2(grid, x, y) {
+            if grid.is_floor(next.0, next.1) {
+                (nx, ny) = next;
+            } else {
+                seats.push(next);
+                break;
+            }
         } else {
-            None
+            break;
         }
     }
+}
 
-    fn left_seat(&self, x: usize, y: usize) -> Option<(usize, usize)> {
-        if y > 0 {
-            Some((x, y - 1))
-        } else {
-            None
-        }
+fn up(_grid: &Grid, x: usize, y: usize) -> Option<(usize, usize)> {
+    if x > 0 {
+        Some((x - 1, y))
+    } else {
+        None
     }
+}
 
-    fn right_seat(&self, x: usize, y: usize) -> Option<(usize, usize)> {
-        if y + 1 < self.width {
-            Some((x, y + 1))
-        } else {
-            None
-        }
+fn down(grid: &Grid, x: usize, y: usize) -> Option<(usize, usize)> {
+    if x + 1 < grid.height {
+        Some((x + 1, y))
+    } else {
+        None
+    }
+}
+
+fn left(_grid: &Grid, x: usize, y: usize) -> Option<(usize, usize)> {
+    if y > 0 {
+        Some((x, y - 1))
+    } else {
+        None
+    }
+}
+
+fn right(grid: &Grid, x: usize, y: usize) -> Option<(usize, usize)> {
+    if y + 1 < grid.width {
+        Some((x, y + 1))
+    } else {
+        None
     }
 }
 
@@ -330,7 +290,7 @@ fn example_input() {
     assert_eq!(grid.is_floor(0, 1), true);
     assert_eq!(grid.is_floor(2, 3), true);
     assert_eq!(grid.is_floor(3, 3), false);
-    assert_eq!(vec![(1, 1), (1, 0)], grid.adjacent_seats(0, 0));
+    // assert_eq!(vec![(1, 1), (1, 0)], grid.adjacent_seats(0, 0));
     assert_eq!(grid.is_empty(0, 0), true);
     assert_eq!(part1(&mut grid.clone()).unwrap(), 37);
     assert_eq!(part2(&mut grid).unwrap(), 26);

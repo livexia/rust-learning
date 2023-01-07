@@ -13,3 +13,5 @@ Cargo.lock
 **/.vscode
 
 **/.DS_Store
+practice/advent-of-code-2020/**/perf.data*
+practice/advent-of-code-2020/**/flamegraph.svg
