@@ -45,7 +45,7 @@ fn part2(buses: &[Int]) -> Result<Int> {
     let mut t = *buses[0].1;
     let mut step = 1;
     let mut cur = 0;
-    loop {
+    while cur < buses.len() {
         for (i, &(offset, id)) in buses.iter().enumerate().skip(cur) {
             if (t + offset as Int) % id != 0 {
                 t += step;
@@ -54,9 +54,6 @@ fn part2(buses: &[Int]) -> Result<Int> {
                 cur = i + 1;
                 step *= id;
             }
-        }
-        if cur == buses.len() {
-            break;
         }
     }
 
