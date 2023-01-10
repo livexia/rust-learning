@@ -1,4 +1,3 @@
-use hashbrown::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -39,20 +38,24 @@ fn part2(numbers: &[usize]) -> Result<usize> {
 }
 
 fn nth(numbers: &[usize], max_turn: usize) -> usize {
-    let mut last_spoken: HashMap<usize, usize> = numbers
-        .iter()
-        .enumerate()
-        .map(|(i, &n)| (n, i + 1))
-        .collect();
+    let mut last_spoken = vec![
+        0;
+        max_turn
+            .max(*numbers.iter().max().unwrap())
+            .max(numbers.len())
+    ];
+    for (i, &n) in numbers.iter().enumerate() {
+        last_spoken[n] = i + 1;
+    }
     let mut cur = 0;
     for turn in numbers.len() + 1..max_turn {
-        let temp = cur;
-        if let Some(&last_turn) = &last_spoken.get(&cur) {
-            cur = turn - last_turn;
-        } else {
+        let last_turn = last_spoken[cur];
+        last_spoken[cur] = turn;
+        if last_turn == 0 {
             cur = 0;
+        } else {
+            cur = turn - last_turn;
         }
-        last_spoken.insert(temp, turn);
     }
     cur
 }
