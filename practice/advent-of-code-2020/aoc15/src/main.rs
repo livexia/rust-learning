@@ -16,32 +16,47 @@ fn main() -> Result<()> {
     let numbers = parse_input(&input);
 
     part1(&numbers)?;
-    // part2()?;
+    part2(&numbers)?;
     Ok(())
 }
 
 fn part1(numbers: &[usize]) -> Result<usize> {
     let start = Instant::now();
 
+    let cur = nth(numbers, 2020);
+    writeln!(io::stdout(), "Part 1: {cur}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(cur)
+}
+
+fn part2(numbers: &[usize]) -> Result<usize> {
+    let start = Instant::now();
+
+    let cur = nth(numbers, 30000000);
+    writeln!(io::stdout(), "Part 2: {cur}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(cur)
+}
+
+fn nth(numbers: &[usize], max_turn: usize) -> usize {
     let mut last_spoken: HashMap<usize, usize> = numbers
         .iter()
         .enumerate()
         .map(|(i, &n)| (n, i + 1))
         .collect();
+    let mut counter = 0;
     let mut cur = 0;
-    for turn in numbers.len() + 1..2020 {
+    for turn in numbers.len() + 1..max_turn {
         let temp = cur;
         if let Some(&last_turn) = &last_spoken.get(&cur) {
             cur = turn - last_turn;
         } else {
             cur = 0;
+            counter += 1;
         }
         last_spoken.insert(temp, turn);
     }
-
-    writeln!(io::stdout(), "Part 1: {cur}")?;
-    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(cur)
+    cur
 }
 
 fn parse_input(input: &str) -> Vec<usize> {
@@ -62,4 +77,7 @@ fn example_input() {
     assert_eq!(part1(&parse_input("2,1,3")).unwrap(), 10);
     assert_eq!(part1(&parse_input("1,2,3")).unwrap(), 27);
     assert_eq!(part1(&parse_input("3,1,2")).unwrap(), 1836);
+
+    assert_eq!(part2(&parse_input("0,3,6")).unwrap(), 175594);
+    assert_eq!(part2(&parse_input("3,1,2")).unwrap(), 362);
 }
