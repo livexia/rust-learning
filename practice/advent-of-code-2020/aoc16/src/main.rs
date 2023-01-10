@@ -43,18 +43,52 @@ fn part1(fields: &Fields, nearby_tickets: &[Ticket]) -> Result<usize> {
 fn part2(fields: &Fields, my_ticket: &Ticket, nearby_tickets: &[Ticket]) -> Result<usize> {
     let start = Instant::now();
 
-    let mut error_rate = 0;
-    for v in nearby_tickets {
-        for n in v {
-            if !fields.values().flatten().any(|r| r.contains(n)) {
-                error_rate += n;
+    let valid_tickets: Vec<_> = nearby_tickets
+        .iter()
+        .filter(|v| {
+            v.iter()
+                .all(|n| fields.values().flatten().any(|r| r.contains(n)))
+        })
+        .collect();
+
+    let mut index = HashMap::new();
+    let mut found = vec![];
+
+    let fields_count = my_ticket.len();
+    while index.len() < fields_count {
+        'search: for i in (0..fields_count).filter(|i| !found.contains(i)) {
+            let mut name = None;
+            for (k, rs) in fields.iter().filter(|(name, _)| !index.contains_key(name)) {
+                if valid_tickets
+                    .iter()
+                    .map(|t| &t[i])
+                    .all(|n| rs.iter().any(|r| r.contains(n)))
+                {
+                    if name.is_none() {
+                        name = Some(k);
+                    } else {
+                        continue 'search;
+                    }
+                }
+            }
+            if let Some(name) = name {
+                // println!("Found fields: {}", name);
+                index.insert(name, i);
+                found.push(i);
+                break;
             }
         }
     }
 
-    writeln!(io::stdout(), "Part 1: {error_rate}")?;
+    let result = index
+        .iter()
+        .filter(|(name, _)| name.starts_with("departure"))
+        .map(|(_, i)| my_ticket[*i])
+        .product();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(error_rate)
+    Ok(result)
 }
 
 fn parse_input(input: &str) -> Result<(Fields, Ticket, Vec<Ticket>)> {
@@ -131,5 +165,5 @@ fn example_input() {
     15,1,5
     5,14,9";
     let (fields, my_ticket, nearby_tickets) = parse_input(input).unwrap();
-    assert_eq!(part2(&fields, &my_ticket, &nearby_tickets).unwrap(), 71)
+    part2(&fields, &my_ticket, &nearby_tickets).unwrap();
 }
