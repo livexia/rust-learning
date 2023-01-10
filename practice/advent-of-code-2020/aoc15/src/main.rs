@@ -44,7 +44,6 @@ fn nth(numbers: &[usize], max_turn: usize) -> usize {
         .enumerate()
         .map(|(i, &n)| (n, i + 1))
         .collect();
-    let mut counter = 0;
     let mut cur = 0;
     for turn in numbers.len() + 1..max_turn {
         let temp = cur;
@@ -52,7 +51,6 @@ fn nth(numbers: &[usize], max_turn: usize) -> usize {
             cur = turn - last_turn;
         } else {
             cur = 0;
-            counter += 1;
         }
         last_spoken.insert(temp, turn);
     }
