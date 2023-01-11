@@ -22,7 +22,13 @@ fn part1(rules: &[Rule], messages: &[Vec<char>]) -> Result<usize> {
     let start = Instant::now();
 
     let r = &rules[0];
-    let result = messages.iter().filter(|m| r.match_msg(m, rules).0).count();
+    let result = messages
+        .iter()
+        .filter(|m| {
+            let (matched, length) = r.match_msg(m, rules);
+            matched && length == m.len()
+        })
+        .count();
 
     writeln!(io::stdout(), "Part 1 {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -39,19 +45,17 @@ impl Rule {
     fn match_msg(&self, msg: &[char], rules: &[Rule]) -> (bool, usize) {
         match self {
             Rule::Sub(subs) => {
-                for sub in subs {
+                'subs: for sub in subs {
                     let mut start = 0;
                     for &r in sub {
                         let (matched, checked_length) = rules[r].match_msg(&msg[start..], rules);
                         if matched {
                             start += checked_length;
                         } else {
-                            break;
+                            continue 'subs;
                         }
                     }
-                    if start == msg.len() {
-                        return (start == msg.len(), start);
-                    }
+                    return (true, start);
                 }
                 (false, 0)
             }
@@ -72,10 +76,16 @@ fn parse_input(input: &str) -> Result<(Vec<Rule>, Vec<Vec<char>>)> {
             continue;
         }
         if part == 1 {
-            if let Some((_, content)) = line.trim().split_once(": ") {
+            if let Some((id, content)) = line.trim().split_once(": ") {
+                let id: usize = id.trim().parse()?;
+                if id >= rules.len() {
+                    for _ in rules.len()..id + 1 {
+                        rules.push(None);
+                    }
+                }
                 let content: Vec<&str> = content.split(' ').collect();
                 if content.len() == 1 && content[0].starts_with('"') {
-                    rules.push(Rule::Single(content[0].chars().skip(1).next().unwrap()))
+                    rules[id] = Some(Rule::Single(content[0].chars().skip(1).next().unwrap()))
                 } else {
                     let mut sub = vec![];
                     let mut subs = vec![];
@@ -90,13 +100,14 @@ fn parse_input(input: &str) -> Result<(Vec<Rule>, Vec<Vec<char>>)> {
                     if !sub.is_empty() {
                         subs.push(sub)
                     }
-                    rules.push(Rule::Sub(subs));
+                    rules[id] = Some(Rule::Sub(subs));
                 }
             }
         } else {
             messages.push(line.trim().chars().collect())
         }
     }
+    let rules = rules.into_iter().map(|r| r.unwrap()).collect();
     Ok((rules, messages))
 }
 
