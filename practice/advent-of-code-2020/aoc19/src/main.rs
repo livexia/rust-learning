@@ -74,26 +74,26 @@ impl Rule {
     fn match_msg(&self, msg: &str, rules: &[Option<Rule>]) -> (bool, usize) {
         match self {
             Rule::Sub(subs) => {
-                'subs: for sub in subs {
+                let mut found = false;
+                for sub in subs {
                     let mut start = 0;
-                    for (i, &r) in sub.iter().enumerate() {
-                        if let Some(r) = &rules[r] {
-                            if start >= msg.len() {
-                                println!("2333");
-                                return (true, start);
-                            }
-                            let (matched, checked_length) = r.match_msg(&msg[start..], rules);
-
+                    for &id in sub {
+                        if let Some(r) = &rules[id] {
+                            let (matched, matched_length) = r.match_msg(&msg[start..], rules);
                             if matched {
-                                start += checked_length;
+                                start += matched_length;
+                                found = true;
                             } else {
-                                continue 'subs;
+                                found = false;
+                                break;
                             }
                         } else {
                             unreachable!()
                         }
                     }
-                    return (true, start);
+                    if found {
+                        return (true, start);
+                    }
                 }
                 (false, 0)
             }
@@ -229,8 +229,8 @@ fn example_input() {
 
     let rules = replace_rules(&rules);
     let r = rules[0].as_ref().unwrap();
-    let result = r.match_msg("aaaabbaaaabbaaa", &rules);
-    println!("{:?}", result);
+    let result = r.match_msg("aaaaabbaabaaaaababaa", &rules);
+    assert_eq!(result.0, true);
 
-    // assert_eq!(part2(&rules, &messages).unwrap(), 12);
+    assert_eq!(part2(&rules, &messages).unwrap(), 12);
 }
