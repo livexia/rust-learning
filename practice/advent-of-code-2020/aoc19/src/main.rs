@@ -22,13 +22,9 @@ fn main() -> Result<()> {
 fn part1(rules: &[Option<Rule>], messages: &[&str]) -> Result<usize> {
     let start = Instant::now();
 
-    let r = rules[0].as_ref().unwrap();
     let result = messages
         .iter()
-        .filter(|m| {
-            let (matched, length) = r.match_msg(m, rules);
-            matched && length == m.len()
-        })
+        .filter(|m| match_msg(&[0], m, rules))
         .count();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
@@ -40,16 +36,9 @@ fn part2(rules: &[Option<Rule>], messages: &[&str]) -> Result<usize> {
     let start = Instant::now();
 
     let rules = replace_rules(rules);
-    let r = rules[0].as_ref().unwrap();
     let result = messages
         .iter()
-        .filter(|m| {
-            let (matched, length) = r.match_msg(m, &rules);
-            if matched && length == m.len() {
-                println!("{}", m)
-            }
-            matched && length == m.len()
-        })
+        .filter(|m| match_msg(&[0], m, &rules))
         .count();
 
     writeln!(io::stdout(), "Part 2: {result}")?;
@@ -70,35 +59,30 @@ enum Rule {
     Single(char),
 }
 
-impl Rule {
-    fn match_msg(&self, msg: &str, rules: &[Option<Rule>]) -> (bool, usize) {
-        match self {
-            Rule::Sub(subs) => {
-                let mut found = false;
-                for sub in subs {
-                    let mut start = 0;
-                    for &id in sub {
-                        if let Some(r) = &rules[id] {
-                            let (matched, matched_length) = r.match_msg(&msg[start..], rules);
-                            if matched {
-                                start += matched_length;
-                                found = true;
-                            } else {
-                                found = false;
-                                break;
-                            }
-                        } else {
-                            unreachable!()
-                        }
-                    }
-                    if found {
-                        return (true, start);
-                    }
+fn extend(pre: &[usize], suf: &[usize]) -> Vec<usize> {
+    let mut v = pre.to_owned();
+    v.extend_from_slice(suf);
+    v
+}
+
+fn match_msg<'a>(cur_rules: &[usize], msg: &'a str, rules: &[Option<Rule>]) -> bool {
+    if cur_rules.is_empty() {
+        return msg.is_empty();
+    }
+    let head = cur_rules[0];
+    let tail = &cur_rules[1..];
+    match &rules[head].as_ref().unwrap() {
+        Rule::Sub(subs) => {
+            (subs[0].len() + tail.len() <= msg.len())
+                && match_msg(&extend(&subs[0], tail), msg, rules)
+                || if subs.len() == 2 {
+                    subs[1].len() + tail.len() <= msg.len()
+                        && match_msg(&extend(&subs[1], tail), msg, rules)
+                } else {
+                    false
                 }
-                (false, 0)
-            }
-            Rule::Single(c) => (msg.starts_with(*c), 1),
         }
+        Rule::Single(c) => msg.starts_with(*c) && match_msg(tail, &msg[1..], rules),
     }
 }
 
@@ -226,11 +210,5 @@ fn example_input() {
     aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba";
     let (rules, messages) = parse_input(&input).unwrap();
     assert_eq!(part1(&rules, &messages).unwrap(), 3);
-
-    let rules = replace_rules(&rules);
-    let r = rules[0].as_ref().unwrap();
-    let result = r.match_msg("aaaaabbaabaaaaababaa", &rules);
-    assert_eq!(result.0, true);
-
     assert_eq!(part2(&rules, &messages).unwrap(), 12);
 }
