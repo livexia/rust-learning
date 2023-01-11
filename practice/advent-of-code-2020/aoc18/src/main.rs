@@ -12,44 +12,194 @@ fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    part1(&input)?;
-    // part2()?;
+    let expres = input
+        .lines()
+        .map(|l| parse_input(&l.trim().chars().filter(|&c| c != ' ').collect::<Vec<_>>()))
+        .collect::<Result<Vec<_>>>()?;
+
+    part1(&expres)?;
+    part2(&expres)?;
     Ok(())
 }
 
-fn part1(input: &str) -> Result<usize> {
+fn part1(expres: &[Experssion]) -> Result<usize> {
     let start = Instant::now();
 
-    let result: usize = input
-        .lines()
-        .map(|l| eval(&parse_expersion(l.trim())))
-        .collect::<Result<Vec<_>>>()?
-        .iter()
-        .sum();
+    let result: usize = expres.iter().map(|e| e.eval().unwrap()).sum();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-#[derive(Debug, Clone, Copy)]
+fn part2(expres: &[Experssion]) -> Result<usize> {
+    let start = Instant::now();
+
+    let result: usize = expres.iter().map(|e| e.advance_eval().unwrap()).sum();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+#[derive(Debug, Clone)]
 enum Experssion {
     Int(usize),
     Op(char),
-    Parentheses(char),
+    Formula(Vec<Experssion>),
 }
 
-fn pretty(expr: &[Experssion]) -> String {
-    let mut s = String::new();
-    for e in expr {
-        match e {
+fn parse_input(s: &[char]) -> Result<Experssion> {
+    let mut i = 0;
+    let mut f = vec![];
+    while i < s.len() {
+        if s[i].is_numeric() {
+            f.push(Experssion::Int((s[i] as u8 - b'0') as usize));
+            i += 1;
+        } else if s[i] == '*' || s[i] == '+' {
+            f.push(Experssion::Op(s[i]));
+            i += 1;
+        } else if s[i] == '(' {
+            let mut right = i + 1;
+            let mut left_count = 1;
+            let mut right_count = 0;
+            while left_count != right_count {
+                if s[right] == '(' {
+                    left_count += 1
+                } else if s[right] == ')' {
+                    right_count += 1
+                }
+                right += 1;
+            }
+            f.push(parse_input(&s[i + 1..right - 1])?);
+            i = right;
+        } else {
+            unreachable!()
+        }
+    }
+    f.reverse();
+    if f.len() == 1 {
+        Ok(f.pop().unwrap())
+    } else {
+        Ok(Experssion::Formula(f))
+    }
+}
+
+impl Experssion {
+    fn pretty(&self) -> String {
+        let mut s = String::new();
+        match self {
             Experssion::Int(n) => s.push_str(&format!("{}", n)),
             Experssion::Op(c) => s.push(*c),
-            Experssion::Parentheses(c) => s.push(*c),
+            Experssion::Formula(c) => {
+                for e in c.iter().rev() {
+                    if e.is_formula() {
+                        s.push('(');
+                        s.push_str(&e.pretty());
+                        s.push(')');
+                    } else {
+                        s.push_str(&e.pretty());
+                    }
+                }
+            }
         }
-        s.push(' ');
+        s
     }
-    s
+
+    fn is_formula(&self) -> bool {
+        if let Experssion::Formula(_) = self {
+            return true;
+        }
+        false
+    }
+
+    fn eval(&self) -> Result<usize> {
+        match self {
+            Experssion::Int(n) => Ok(*n),
+            Experssion::Op(_) => unreachable!(),
+            Experssion::Formula(v) => {
+                let mut v = v.clone();
+                if v.len() < 3 {
+                    unreachable!();
+                }
+                for e in &mut v {
+                    if e.is_formula() {
+                        *e = Experssion::Int(e.eval()?)
+                    }
+                }
+                while v.len() > 1 {
+                    let r = calc_three(&mut v)?;
+                    v.push(r);
+                }
+                if let Some(Experssion::Int(n)) = v.pop() {
+                    return Ok(n);
+                }
+                err!("can not eval expression: {}", self.pretty())
+            }
+        }
+    }
+
+    fn advance_eval(&self) -> Result<usize> {
+        match self {
+            Experssion::Int(n) => Ok(*n),
+            Experssion::Op(_) => unreachable!(),
+            Experssion::Formula(v) => {
+                let mut v = v.clone();
+                if v.len() < 3 {
+                    unreachable!();
+                }
+                if v.len() == 3 {}
+                for e in &mut v {
+                    if e.is_formula() {
+                        *e = Experssion::Int(e.advance_eval()?)
+                    }
+                }
+                let mut i = 0;
+                while i < v.len() {
+                    if let Experssion::Op(op) = v[i] {
+                        if op == '+' {
+                            if let Experssion::Int(op1) = v[i - 1] {
+                                if let Experssion::Int(op2) = v[i + 1] {
+                                    let r = op1 + op2;
+                                    for _ in 0..3 {
+                                        v.remove(i - 1);
+                                    }
+                                    v.insert(i - 1, Experssion::Int(r));
+                                } else {
+                                    unreachable!()
+                                }
+                            } else {
+                                unreachable!()
+                            }
+                        } else {
+                            i += 1;
+                        }
+                    } else {
+                        i += 1;
+                    }
+                }
+                while v.len() > 1 {
+                    let r = calc_three(&mut v)?;
+                    v.push(r);
+                }
+                if let Some(Experssion::Int(n)) = v.pop() {
+                    return Ok(n);
+                }
+                err!("can not eval expression: {}", self.pretty())
+            }
+        }
+    }
+}
+
+fn calc_three(v: &mut Vec<Experssion>) -> Result<Experssion> {
+    if let Some(Experssion::Int(op1)) = v.pop() {
+        if let Some(Experssion::Op(op)) = v.pop() {
+            if let Some(Experssion::Int(op2)) = v.pop() {
+                return Ok(Experssion::Int(calc(op, op1, op2)));
+            }
+        }
+    }
+    err!("can not eval expression")
 }
 
 fn calc(op: char, op1: usize, op2: usize) -> usize {
@@ -62,96 +212,38 @@ fn calc(op: char, op1: usize, op2: usize) -> usize {
     }
 }
 
-fn eval(expr: &[Experssion]) -> Result<usize> {
-    let mut stack = expr.to_vec();
-    stack.reverse();
-    while stack.len() > 1 {
-        let mut prev_num = None;
-        let mut prev_op = None;
-
-        while let Some(cur) = stack.pop() {
-            match cur {
-                Experssion::Int(n) => {
-                    if let Some(p_n) = prev_num {
-                        if let Some(op) = prev_op {
-                            let r = calc(op, p_n, n);
-                            stack.push(Experssion::Int(r));
-                            break;
-                        }
-                    } else {
-                        prev_num = Some(n);
-                    }
-                }
-                Experssion::Op(c) => {
-                    prev_op = Some(c);
-                }
-                Experssion::Parentheses(c) => {
-                    let mut left_count = 1;
-                    let mut right_count = 0;
-                    let mut new_stack = vec![];
-                    if c == '(' {
-                        while left_count != right_count {
-                            let next = stack.pop().unwrap();
-                            new_stack.push(next);
-                            match next {
-                                Experssion::Int(_) | Experssion::Op(_) => (),
-                                Experssion::Parentheses(n_c) => {
-                                    if n_c == '(' {
-                                        left_count += 1
-                                    } else {
-                                        right_count += 1
-                                    };
-                                }
-                            }
-                        }
-                        new_stack.pop();
-                        let r = eval(&new_stack)?;
-                        stack.push(Experssion::Int(r));
-                    } else {
-                        unreachable!("{:?} {}", cur, pretty(expr));
-                    }
-                }
-            }
-        }
-    }
-
-    if let Some(Experssion::Int(n)) = stack.pop() {
-        return Ok(n);
-    }
-    err!("can not eval the experssion: {}", pretty(expr))
-}
-
-fn parse_expersion(input: &str) -> Vec<Experssion> {
-    let mut expr = vec![];
-
-    for c in input.chars() {
-        if c == ' ' {
-            continue;
-        } else if c == '(' || c == ')' {
-            expr.push(Experssion::Parentheses(c))
-        } else if c.is_numeric() {
-            expr.push(Experssion::Int((c as u8 - b'0') as usize))
-        } else {
-            expr.push(Experssion::Op(c))
-        }
-    }
-
-    expr
-}
-
 #[test]
 fn example_input() {
-    assert_eq!(eval(&parse_expersion("4 * 5")).unwrap(), 20);
-    assert_eq!(eval(&parse_expersion("2 * 3 + (4 * 5)")).unwrap(), 26);
-    assert_eq!(
-        eval(&parse_expersion("5 + (8 * 3 + 9 + 3 * 4 * 3)")).unwrap(),
-        437
-    );
-    assert_eq!(
-        eval(&parse_expersion(
-            "((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2"
-        ))
-        .unwrap(),
-        13632
-    );
+    let e = parse_input(&"4 * 5".chars().filter(|&c| c != ' ').collect::<Vec<_>>()).unwrap();
+    assert_eq!(e.eval().unwrap(), 20);
+
+    let e = parse_input(
+        &"2 * 3 + (4 * 5)"
+            .chars()
+            .filter(|&c| c != ' ')
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    assert_eq!(e.eval().unwrap(), 26);
+    assert_eq!(e.advance_eval().unwrap(), 46);
+
+    let e = parse_input(
+        &"5 + (8 * 3 + 9 + 3 * 4 * 3)"
+            .chars()
+            .filter(|&c| c != ' ')
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    assert_eq!(e.eval().unwrap(), 437);
+    assert_eq!(e.advance_eval().unwrap(), 1445);
+
+    let e = parse_input(
+        &"((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2"
+            .chars()
+            .filter(|&c| c != ' ')
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    assert_eq!(e.eval().unwrap(), 13632);
+    assert_eq!(e.advance_eval().unwrap(), 23340);
 }
