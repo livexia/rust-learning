@@ -20,11 +20,11 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(tiles: &[Tile]) -> Result<usize> {
+fn part1(tiles: &[Image]) -> Result<usize> {
     let start = Instant::now();
 
     let mut result = vec![];
-    let edges: Vec<[u16; 4]> = tiles.iter().map(|t| t.edges()).collect();
+    let edges: Vec<_> = tiles.iter().map(|t| t.edges()).collect();
 
     for (i, tile) in tiles.iter().enumerate() {
         if outermost_edges(i, &edges, 10).len() == 2 {
@@ -39,112 +39,25 @@ fn part1(tiles: &[Tile]) -> Result<usize> {
     Ok(result)
 }
 
-fn part2(tiles: &[Tile]) -> Result<usize> {
+fn part2(tiles: &[Image]) -> Result<usize> {
     let start = Instant::now();
 
     let mut tiles = tiles.to_vec();
     let mapping = mapping_tiles(&mut tiles);
-    let (image, size) = merge_tiles(&tiles, &mapping);
+    let image = Image::from_images(&tiles, &mapping);
 
     let raw_monster = "                  # \n#    ##    ##    ###\n #  #  #  #  #  #   ";
-    let mut monster = vec![];
-    for line in raw_monster.lines() {
-        let mut r = 0u128;
-        for (i, c) in line.char_indices() {
-            if c == '#' {
-                r |= 1 << (line.len() - 1 - i);
-            }
-        }
-        monster.push(r);
-    }
+    let mut monster = Image::from_str(55555, raw_monster);
 
-    let monster_count = search_monster_with_rotate_and_flip(&image, size, &mut monster, 20, 3);
+    let total_one: usize = image.count_one();
+    let monster_one: usize = monster.count_one();
 
-    let total_one: usize = image.iter().map(|&r| count_one(r)).sum();
-    let monster_one: usize = monster.iter().map(|&r| count_one(r)).sum();
+    let monster_count = image.search_image_with_rotate_and_flip(&mut monster);
     let result = total_one - monster_count * monster_one;
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
-}
-
-fn rotate_monster(monster: &mut Vec<u128>, width: usize) {
-    let mut temp = vec![0; width];
-    for (i, new_row) in temp.iter_mut().enumerate() {
-        let mut r = 0;
-
-        let mask = 1 << (width - 1 - i);
-        for (j, row) in monster.iter().enumerate() {
-            if row & mask != 0 {
-                r |= 1 << j
-            }
-        }
-        *new_row = r;
-    }
-    *monster = temp;
-}
-
-fn flip_monster(monster: &mut [u128], width: usize) {
-    for row in monster {
-        *row = reverse_u128(*row, width);
-    }
-}
-
-#[allow(dead_code)]
-fn draw_monster(monster: &[u128], width: usize) -> String {
-    let mut s = String::new();
-    for row in monster {
-        for i in 0..width {
-            if row & (1 << (width - 1 - i)) != 0 {
-                s.push('#')
-            } else {
-                s.push(' ')
-            }
-        }
-        s.push('\n')
-    }
-
-    s
-}
-
-fn search_monster(image: &[u128], size: usize, monster: &[u128]) -> usize {
-    let monster_height = monster.len();
-    let mut count = 0;
-    for i in 0..=(size - monster_height) {
-        for j in 0..size {
-            if monster
-                .iter()
-                .enumerate()
-                .all(|(row, &monster_row)| (image[i + row] >> j) & monster_row == monster_row)
-            {
-                count += 1;
-            }
-        }
-    }
-    count
-}
-
-fn search_monster_with_rotate_and_flip(
-    image: &[u128],
-    size: usize,
-    monster: &mut Vec<u128>,
-    width: usize,
-    height: usize,
-) -> usize {
-    let (mut width, mut height) = (width, height);
-    for _ in 0..2 {
-        for _ in 0..4 {
-            let count = search_monster(image, size, monster);
-            if count != 0 {
-                return count;
-            }
-            rotate_monster(monster, width);
-            (width, height) = (height, width);
-        }
-        flip_monster(monster, width)
-    }
-    0
 }
 
 fn count_one(num: u128) -> usize {
@@ -159,9 +72,9 @@ fn count_one(num: u128) -> usize {
     count
 }
 
-fn mapping_tiles(tiles: &mut [Tile]) -> HashMap<usize, i32> {
+fn mapping_tiles(tiles: &mut [Image]) -> HashMap<usize, i32> {
     let l = tiles.len();
-    let tile_length = tiles[0].length;
+    let tile_length = tiles[0].width;
     let width = (l as f64).sqrt() as i32;
 
     let mut mapping = HashMap::new();
@@ -228,104 +141,168 @@ fn mapping_tiles(tiles: &mut [Tile]) -> HashMap<usize, i32> {
     mapping
 }
 
-fn merge_tiles(tiles: &[Tile], mapping: &HashMap<usize, i32>) -> (Vec<u128>, usize) {
-    let tile_length = tiles[0].length - 2;
-    let width = (tiles.len() as f64).sqrt() as usize;
+#[derive(Clone)]
+struct Image {
+    id: usize,
+    raw: Vec<u128>,
+    width: usize,
+    height: usize,
+}
 
-    let image_width = tile_length * width;
-    let mut image = vec![0u128; image_width];
+impl Image {
+    fn new(id: usize, width: usize, height: usize) -> Self {
+        Image {
+            id,
+            raw: vec![],
+            width,
+            height,
+        }
+    }
 
-    let mut order: Vec<_> = mapping.iter().collect();
-    order.sort_by_key(|a| a.1);
+    fn from_str(id: usize, s: &str) -> Self {
+        let mut raw = vec![];
+        let mut width = 0;
+        for line in s.lines() {
+            let mut r = 0u128;
+            if width == 0 {
+                width = line.len();
+            } else {
+                assert_eq!(width, line.len())
+            }
+            for (i, c) in line.char_indices() {
+                if c == '#' {
+                    r |= 1 << (line.len() - 1 - i);
+                }
+            }
+            raw.push(r);
+        }
+        let height = raw.len();
+        Image {
+            id,
+            raw,
+            width,
+            height,
+        }
+    }
 
-    for i in 0..width {
-        for j in 0..width {
-            let &cur = order[i * width + j].0;
-            let tile = tiles[cur].borderless();
-            for (k, row) in tile.into_iter().enumerate() {
-                let x = i * tile_length + k;
-                let y = image_width - j * tile_length - tile_length;
-                image[x] |= (row as u128) << y;
+    fn search_image(&self, other: &Image) -> usize {
+        let mut count = 0;
+        for i in 0..=(self.height - other.height) {
+            for j in 0..self.width {
+                if other
+                    .raw
+                    .iter()
+                    .enumerate()
+                    .all(|(row, &other_row)| (self.raw[i + row] >> j) & other_row == other_row)
+                {
+                    count += 1;
+                }
             }
         }
+        count
     }
 
-    (image, image_width)
-}
+    fn search_image_with_rotate_and_flip(&self, other: &mut Image) -> usize {
+        for _ in 0..2 {
+            for _ in 0..4 {
+                let count = self.search_image(other);
+                if count != 0 {
+                    return count;
+                }
+                other.rotate_right();
+            }
+            // flip_monster(other, width)
+            other.flip_h();
+        }
+        0
+    }
 
-#[derive(Clone)]
-struct Tile {
-    id: usize,
-    image: Vec<u16>,
-    length: usize,
-}
+    fn from_images(tiles: &[Image], mapping: &HashMap<usize, i32>) -> Self {
+        let tile_length = tiles[0].width - 2;
+        let width = (tiles.len() as f64).sqrt() as usize;
 
-impl Tile {
-    fn new(id: usize, length: usize) -> Self {
-        Tile {
+        let image_width = tile_length * width;
+        let mut raw = vec![0u128; image_width];
+
+        let mut order: Vec<_> = mapping.iter().collect();
+        order.sort_by_key(|a| a.1);
+
+        for i in 0..width {
+            for j in 0..width {
+                let &cur = order[i * width + j].0;
+                let tile = tiles[cur].borderless();
+                for (k, row) in tile.into_iter().enumerate() {
+                    let x = i * tile_length + k;
+                    let y = image_width - j * tile_length - tile_length;
+                    raw[x] |= row << y;
+                }
+            }
+        }
+
+        Image::from_vec(99999, raw, image_width)
+    }
+
+    fn from_vec(id: usize, v: Vec<u128>, width: usize) -> Self {
+        let height = v.len();
+        Image {
             id,
-            image: vec![],
-            length,
+            raw: v,
+            width,
+            height,
         }
     }
 
-    fn update_image(&mut self, row: u16) {
-        self.image.push(row);
+    fn update_image(&mut self, row: u128) {
+        self.raw.push(row);
     }
 
-    fn edges(&self) -> [u16; 4] {
+    fn edges(&self) -> [u128; 4] {
         let mut edges = [0; 4];
-        edges[0] = self.image[0];
-        edges[1] = self.column(self.image.len() - 1);
+        edges[0] = self.raw[0];
+        edges[1] = self.column(self.raw.len() - 1);
 
-        edges[2] = *self.image.last().unwrap();
+        edges[2] = *self.raw.last().unwrap();
         edges[3] = self.column(0);
 
         edges
     }
 
     fn flip_h(&mut self) {
-        for row in &mut self.image {
-            *row = reverse_u16(*row, self.length);
+        for row in &mut self.raw {
+            *row = reverse(*row, self.width);
         }
     }
 
     fn rotate_right(&mut self) {
-        self.image = (0..self.image.len())
-            .map(|c| reverse_u16(self.column(c), self.length))
-            .collect();
+        self.raw = (0..self.width).map(|c| self.column(c)).collect();
+        (self.height, self.width) = (self.width, self.height);
     }
 
-    fn column(&self, column: usize) -> u16 {
+    fn column(&self, column: usize) -> u128 {
         let mut r = 0;
-        let mask = 1 << (self.image.len() - 1 - column);
-        for (i, row) in self.image.iter().rev().enumerate() {
+        let mask = 1 << (self.width - 1 - column);
+        for (i, row) in self.raw.iter().rev().enumerate() {
             if row & mask != 0 {
-                r |= 1 << i;
+                r |= 1 << (self.height - 1 - i);
             }
         }
         r
     }
 
-    fn borderless(&self) -> Vec<u16> {
-        let mut image = vec![];
-        for i in 1..self.length - 1 {
-            image.push(without_head_and_tail(self.image[i], self.length))
+    fn borderless(&self) -> Vec<u128> {
+        let mut raw = vec![];
+        for i in 1..self.height - 1 {
+            raw.push(without_head_and_tail(self.raw[i], self.width))
         }
-        image
+        raw
     }
-}
 
-trait Draw {
-    fn draw(&self, length: usize) -> String;
-}
-
-impl Draw for [u16] {
-    fn draw(&self, length: usize) -> String {
+    #[allow(dead_code)]
+    fn draw(&self) -> String {
         let mut s = String::new();
-        for row in self {
-            for i in 0..length {
-                if row & (1 << (length - 1 - i)) != 0 {
+        for row in &self.raw {
+            for i in 0..self.width {
+                if row & (1 << (self.width - 1 - i)) != 0 {
                     s.push('#')
                 } else {
                     s.push('.')
@@ -336,31 +313,17 @@ impl Draw for [u16] {
 
         s
     }
-}
 
-impl Draw for [u128] {
-    fn draw(&self, length: usize) -> String {
-        let mut s = String::new();
-        for row in self {
-            for i in 0..length {
-                if row & (1 << (length - 1 - i)) != 0 {
-                    s.push('#')
-                } else {
-                    s.push('.')
-                }
-            }
-            s.push('\n')
-        }
-
-        s
+    fn count_one(&self) -> usize {
+        self.raw.iter().map(|&r| count_one(r)).sum()
     }
 }
 
-fn without_head_and_tail(edge: u16, length: usize) -> u16 {
+fn without_head_and_tail(edge: u128, length: usize) -> u128 {
     (edge & (!(1 << (length - 1)))) >> 1
 }
 
-fn outermost_edges(id: usize, edges: &[[u16; 4]], length: usize) -> Vec<usize> {
+fn outermost_edges(id: usize, edges: &[[u128; 4]], length: usize) -> Vec<usize> {
     let l = edges.len();
     edges[id]
         .iter()
@@ -374,7 +337,7 @@ fn outermost_edges(id: usize, edges: &[[u16; 4]], length: usize) -> Vec<usize> {
         .collect()
 }
 
-fn reverse_u16(edge: u16, length: usize) -> u16 {
+fn reverse(edge: u128, length: usize) -> u128 {
     let mut r = 0;
     let mut edge = edge;
     let mut length = length;
@@ -386,30 +349,18 @@ fn reverse_u16(edge: u16, length: usize) -> u16 {
     r
 }
 
-fn reverse_u128(edge: u128, length: usize) -> u128 {
-    let mut r = 0;
-    let mut edge = edge;
-    let mut length = length;
-    while edge != 0 {
-        length -= 1;
-        r |= (edge & 1) << length;
-        edge >>= 1;
-    }
-    r
-}
-
-fn possible_adjacent(edge: u16, edges: &[u16; 4], length: usize) -> (i32, usize) {
+fn possible_adjacent(edge: u128, edges: &[u128; 4], length: usize) -> (i32, usize) {
     for (i, &other) in edges.iter().enumerate() {
         if edge == other {
             return (1, i);
-        } else if edge == reverse_u16(other, length) {
+        } else if edge == reverse(other, length) {
             return (-1, i);
         }
     }
     (0, 0)
 }
 
-fn parse_input(input: &str) -> Vec<Tile> {
+fn parse_input(input: &str) -> Vec<Image> {
     let mut tiles = vec![];
 
     for line in input.lines() {
@@ -417,7 +368,7 @@ fn parse_input(input: &str) -> Vec<Tile> {
             continue;
         } else if let Some(id) = line.trim().strip_prefix("Tile ") {
             if let Some(id) = id.trim().strip_suffix(':') {
-                tiles.push(Tile::new(id.trim().parse().unwrap(), 10));
+                tiles.push(Image::new(id.trim().parse().unwrap(), 10, 10));
             } else {
                 unreachable!()
             }
@@ -550,7 +501,4 @@ fn example_input() {
     let tiles = parse_input(input);
     assert_eq!(part1(&tiles).unwrap(), 20899048083289);
     assert_eq!(part2(&tiles).unwrap(), 273);
-
-    let t = tiles[tiles.len() - 1].clone();
-    println!("{}", &t.borderless().draw(t.length - 2));
 }
