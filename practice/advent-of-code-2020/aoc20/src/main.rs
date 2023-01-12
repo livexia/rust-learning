@@ -281,9 +281,9 @@ impl Image {
     fn column(&self, column: usize) -> u128 {
         let mut r = 0;
         let mask = 1 << (self.width - 1 - column);
-        for (i, row) in self.raw.iter().rev().enumerate() {
+        for (i, row) in self.raw.iter().enumerate() {
             if row & mask != 0 {
-                r |= 1 << (self.height - 1 - i);
+                r |= 1 << i;
             }
         }
         r
