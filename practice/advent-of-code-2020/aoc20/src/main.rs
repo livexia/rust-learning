@@ -27,7 +27,7 @@ fn part1(tiles: &[Image]) -> Result<usize> {
     let edges: Vec<_> = tiles.iter().map(|t| t.edges()).collect();
 
     for (i, tile) in tiles.iter().enumerate() {
-        if outermost_edges(i, &edges, 10).len() == 2 {
+        if is_corner_tile(i, &edges, 10) {
             result.push(tile.id);
         }
     }
@@ -60,18 +60,6 @@ fn part2(tiles: &[Image]) -> Result<usize> {
     Ok(result)
 }
 
-fn count_one(num: u128) -> usize {
-    let mut num = num;
-    let mut count = 0;
-    while num != 0 {
-        if num & 1 == 1 {
-            count += 1;
-        }
-        num >>= 1;
-    }
-    count
-}
-
 fn mapping_tiles(tiles: &mut [Image]) -> HashMap<usize, i32> {
     let l = tiles.len();
     let tile_length = tiles[0].width;
@@ -93,7 +81,7 @@ fn mapping_tiles(tiles: &mut [Image]) -> HashMap<usize, i32> {
                 if mapping.contains_key(&j) {
                     continue;
                 }
-                if possible_adjacent(edge, &next.edges(), tile_length).0 != 0 {
+                if possible_adjacent_tile(edge, &next.edges(), tile_length) {
                     for _ in 0..2 {
                         for _ in 0..4 {
                             if edge == next.edges()[other_edge] {
@@ -319,22 +307,20 @@ impl Image {
     }
 }
 
-fn without_head_and_tail(edge: u128, length: usize) -> u128 {
-    (edge & (!(1 << (length - 1)))) >> 1
+fn count_one(num: u128) -> usize {
+    let mut num = num;
+    let mut count = 0;
+    while num != 0 {
+        if num & 1 == 1 {
+            count += 1;
+        }
+        num >>= 1;
+    }
+    count
 }
 
-fn outermost_edges(id: usize, edges: &[[u128; 4]], length: usize) -> Vec<usize> {
-    let l = edges.len();
-    edges[id]
-        .iter()
-        .enumerate()
-        .filter(|(_, &cur)| {
-            (0..l)
-                .filter(|j| *j != id)
-                .all(|j| possible_adjacent(cur, &edges[j], length).0 == 0)
-        })
-        .map(|(i, _)| i)
-        .collect()
+fn without_head_and_tail(edge: u128, length: usize) -> u128 {
+    (edge & (!(1 << (length - 1)))) >> 1
 }
 
 fn reverse(edge: u128, length: usize) -> u128 {
@@ -349,15 +335,24 @@ fn reverse(edge: u128, length: usize) -> u128 {
     r
 }
 
-fn possible_adjacent(edge: u128, edges: &[u128; 4], length: usize) -> (i32, usize) {
-    for (i, &other) in edges.iter().enumerate() {
-        if edge == other {
-            return (1, i);
-        } else if edge == reverse(other, length) {
-            return (-1, i);
-        }
-    }
-    (0, 0)
+fn is_corner_tile(id: usize, edges: &[[u128; 4]], width: usize) -> bool {
+    let l = edges.len();
+    edges[id]
+        .iter()
+        .enumerate()
+        .filter(|(_, &cur)| {
+            (0..l)
+                .filter(|j| *j != id)
+                .all(|j| !possible_adjacent_tile(cur, &edges[j], width))
+        })
+        .count()
+        == 2
+}
+
+fn possible_adjacent_tile(edge: u128, edges: &[u128; 4], width: usize) -> bool {
+    edges
+        .iter()
+        .any(|&other| edge == other || edge == reverse(other, width))
 }
 
 fn parse_input(input: &str) -> Vec<Image> {
