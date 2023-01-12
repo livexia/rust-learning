@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -8,8 +9,6 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-
-const TILE_LENGTH: usize = 10;
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -27,11 +26,9 @@ fn part1(tiles: &[Tile]) -> Result<usize> {
     let mut result = vec![];
     let edges: Vec<[u16; 4]> = tiles.iter().map(|t| t.edges()).collect();
 
-    let l = tiles.len();
-
-    for i in 0..l {
-        if outermost_edges(i, &edges).len() == 2 {
-            result.push(tiles[i].id);
+    for (i, tile) in tiles.iter().enumerate() {
+        if outermost_edges(i, &edges, 10).len() == 2 {
+            result.push(tile.id);
         }
     }
     assert_eq!(result.len(), 4);
@@ -45,31 +42,11 @@ fn part1(tiles: &[Tile]) -> Result<usize> {
 fn part2(tiles: &[Tile]) -> Result<usize> {
     let start = Instant::now();
 
-    let edges: Vec<[u16; 4]> = tiles.iter().map(|t| t.edges()).collect();
+    let mut tiles = tiles.to_vec();
+    let mapping = mapping_tiles(&mut tiles);
+    let (image, size) = merge_tiles(&tiles, &mapping);
 
-    let l = tiles.len();
-    let width = (l as f64).sqrt() as usize;
-
-    let mut connected = vec![[(0, 0, 0); 4]; l]; // every tile edge connected
-    for i in 0..l {
-        for e in 0..4 {
-            let cur = edges[i][e];
-            for j in 0..l {
-                if j == i {
-                    continue;
-                }
-                let p = possible_adjacent(cur, &edges[j], TILE_LENGTH);
-                if p.0 != 0 {
-                    // println!(
-                    //     "id: {} <-> {} : {} <-> {} {}",
-                    //     tiles[i].id, tiles[j].id, e, p.1, p.0
-                    // );
-                    assert_eq!(connected[i][e], (0, 0, 0));
-                    connected[i][e] = (j, p.1, p.0);
-                }
-            }
-        }
-    }
+    let monster = "                  #\n#    ##    ##    ###\n #  #  #  #  #  #  ";
 
     let result = 0;
 
@@ -78,15 +55,114 @@ fn part2(tiles: &[Tile]) -> Result<usize> {
     Ok(result)
 }
 
+fn mapping_tiles(tiles: &mut [Tile]) -> HashMap<usize, i32> {
+    let l = tiles.len();
+    let tile_length = tiles[0].length;
+    let width = (l as f64).sqrt() as i32;
+
+    let mut mapping = HashMap::new();
+
+    let mut stack = Vec::new();
+    stack.push((0, 0));
+
+    while let Some((cur, id)) = stack.pop() {
+        let edges = tiles[cur].edges();
+        'outer: for (e, &edge) in edges.iter().enumerate() {
+            let other_edge = (2 + e) % 4;
+            'inner: for (j, next) in tiles.iter_mut().enumerate() {
+                if j == cur {
+                    continue;
+                }
+                if mapping.contains_key(&j) {
+                    continue;
+                }
+                if possible_adjacent(edge, &next.edges(), tile_length).0 != 0 {
+                    for _ in 0..2 {
+                        for _ in 0..4 {
+                            if edge == next.edges()[other_edge] {
+                                let next_id = if e == 0 {
+                                    // up edge
+                                    id - width
+                                } else if e == 1 {
+                                    // left edge
+                                    id + 1
+                                } else if e == 2 {
+                                    // bottom edge
+                                    id + width
+                                } else if e == 3 {
+                                    // right edge
+                                    id - 1
+                                } else {
+                                    unreachable!()
+                                };
+                                stack.push((j, next_id));
+                                continue 'outer;
+                            }
+                            if mapping.contains_key(&j) {
+                                continue 'inner;
+                            }
+                            next.rotate_right();
+                        }
+                        next.flip_h();
+                    }
+                }
+            }
+        }
+
+        mapping.insert(cur, id);
+    }
+
+    let &min = mapping.values().min().unwrap();
+    for (_, v) in mapping.iter_mut() {
+        *v -= min;
+    }
+
+    let all_id: HashSet<_> = mapping.values().collect();
+    assert_eq!(all_id.len(), mapping.len());
+
+    assert_eq!(l, mapping.len());
+    mapping
+}
+
+fn merge_tiles(tiles: &[Tile], mapping: &HashMap<usize, i32>) -> (Vec<u128>, usize) {
+    let tile_length = tiles[0].length - 2;
+    let width = (tiles.len() as f64).sqrt() as usize;
+
+    let image_width = tile_length * width;
+    let mut image = vec![0u128; image_width];
+
+    let mut order: Vec<_> = mapping.iter().collect();
+    order.sort_by_key(|a| a.1);
+
+    for i in 0..width {
+        for j in 0..width {
+            let &cur = order[i * width + j].0;
+            let tile = tiles[cur].borderless();
+            for (k, row) in tile.into_iter().enumerate() {
+                let x = i * tile_length + k;
+                let y = image_width - j * tile_length - tile_length;
+                image[x] |= (row as u128) << y;
+            }
+        }
+    }
+
+    (image, image_width)
+}
+
 #[derive(Clone)]
 struct Tile {
     id: usize,
     image: Vec<u16>,
+    length: usize,
 }
 
 impl Tile {
-    fn new(id: usize) -> Self {
-        Tile { id, image: vec![] }
+    fn new(id: usize, length: usize) -> Self {
+        Tile {
+            id,
+            image: vec![],
+            length,
+        }
     }
 
     fn update_image(&mut self, row: u16) {
@@ -106,25 +182,14 @@ impl Tile {
 
     fn flip_h(&mut self) {
         for row in &mut self.image {
-            *row = reverse(*row, TILE_LENGTH);
+            *row = reverse(*row, self.length);
         }
     }
 
-    fn flip_v(&mut self) {
-        let image = self.image.clone();
-        let l = image.len() - 1;
-        for i in 0..image.len() {
-            self.image[l - i] = image[i];
-        }
-    }
-
-    fn rotate_right(&mut self, times: usize) {
-        let times = times % 4;
-        for _ in 0..times {
-            self.image = (0..self.image.len())
-                .map(|c| reverse(self.cloumn(c), TILE_LENGTH))
-                .collect();
-        }
+    fn rotate_right(&mut self) {
+        self.image = (0..self.image.len())
+            .map(|c| reverse(self.cloumn(c), self.length))
+            .collect();
     }
 
     fn cloumn(&self, cloumn: usize) -> u16 {
@@ -138,11 +203,25 @@ impl Tile {
         r
     }
 
-    fn draw(&self) -> String {
+    fn borderless(&self) -> Vec<u16> {
+        let mut image = vec![];
+        for i in 1..self.length - 1 {
+            image.push(without_head_and_tail(self.image[i], self.length))
+        }
+        image
+    }
+}
+
+trait Draw {
+    fn draw(&self, length: usize) -> String;
+}
+
+impl Draw for [u16] {
+    fn draw(&self, length: usize) -> String {
         let mut s = String::new();
-        for row in &self.image {
-            for i in 0..TILE_LENGTH {
-                if row & (1 << (TILE_LENGTH - 1 - i)) != 0 {
+        for row in self {
+            for i in 0..length {
+                if row & (1 << (length - 1 - i)) != 0 {
                     s.push('#')
                 } else {
                     s.push('.')
@@ -155,7 +234,29 @@ impl Tile {
     }
 }
 
-fn outermost_edges(id: usize, edges: &[[u16; 4]]) -> Vec<usize> {
+impl Draw for [u128] {
+    fn draw(&self, length: usize) -> String {
+        let mut s = String::new();
+        for row in self {
+            for i in 0..length {
+                if row & (1 << (length - 1 - i)) != 0 {
+                    s.push('#')
+                } else {
+                    s.push('.')
+                }
+            }
+            s.push('\n')
+        }
+
+        s
+    }
+}
+
+fn without_head_and_tail(edge: u16, length: usize) -> u16 {
+    (edge & (!(1 << (length - 1)))) >> 1
+}
+
+fn outermost_edges(id: usize, edges: &[[u16; 4]], length: usize) -> Vec<usize> {
     let l = edges.len();
     edges[id]
         .iter()
@@ -163,7 +264,7 @@ fn outermost_edges(id: usize, edges: &[[u16; 4]]) -> Vec<usize> {
         .filter(|(_, &cur)| {
             (0..l)
                 .filter(|j| *j != id)
-                .all(|j| possible_adjacent(cur, &edges[j], TILE_LENGTH).0 == 0)
+                .all(|j| possible_adjacent(cur, &edges[j], length).0 == 0)
         })
         .map(|(i, _)| i)
         .collect()
@@ -200,7 +301,7 @@ fn parse_input(input: &str) -> Vec<Tile> {
             continue;
         } else if let Some(id) = line.trim().strip_prefix("Tile ") {
             if let Some(id) = id.trim().strip_suffix(':') {
-                tiles.push(Tile::new(id.trim().parse().unwrap()));
+                tiles.push(Tile::new(id.trim().parse().unwrap(), 10));
             } else {
                 unreachable!()
             }
@@ -334,5 +435,6 @@ fn example_input() {
     assert_eq!(part1(&tiles).unwrap(), 20899048083289);
     assert_eq!(part2(&tiles).unwrap(), 273);
 
-    // let mut t = tiles[tiles.len() - 1].clone();
+    let t = tiles[tiles.len() - 1].clone();
+    println!("{}", &t.borderless().draw(t.length - 2));
 }
