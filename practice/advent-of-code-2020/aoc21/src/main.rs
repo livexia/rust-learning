@@ -33,11 +33,11 @@ fn part1(foods: &[Food], index1: &Index, index2: &Index) -> Result<usize> {
 
     let possible = possible_match(foods, index1, index2);
 
-    let (found_ingredients, _, _) = trim_match(&possible, index2.len());
+    let (matched_food, _) = trim_match(&possible, index2.len());
 
     let result: usize = foods
         .iter()
-        .map(|f| f.count_without_allergens(found_ingredients))
+        .map(|f| f.count_without_allergens(matched_food.ingredients))
         .sum();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
@@ -50,7 +50,7 @@ fn part2(foods: &[Food], index1: &Index, index2: &Index) -> Result<String> {
 
     let possible = possible_match(foods, index1, index2);
 
-    let (_, _, mut matched) = trim_match(&possible, index2.len());
+    let (_, mut matched) = trim_match(&possible, index2.len());
 
     let index1: HashMap<_, _> = index1.iter().map(|(k, v)| (v, k)).collect();
     let index2: HashMap<_, _> = index2.iter().map(|(k, v)| (v, k)).collect();
@@ -78,8 +78,8 @@ fn possible_match(
             let h2 = allergen_id_to_hash(a_id);
             if foods
                 .iter()
-                .filter(|f| f.allergens & h2 != 0)
-                .all(|f| (f.ingredients.0 & h1.0 != 0) || (f.ingredients.1 & h1.1 != 0))
+                .filter(|f| f.contains_allergen(&h2))
+                .all(|f| f.contains_ingredient(&h1))
             {
                 possible.entry(h2).or_default().push(h1);
             }
@@ -91,32 +91,32 @@ fn possible_match(
 fn trim_match(
     possible: &HashMap<u128, Vec<(u128, u128)>>,
     allergen_count: usize,
-) -> ((u128, u128), u128, Vec<(usize, usize)>) {
-    let mut found_ingredients = (0, 0);
-    let mut found_allergens = 0;
+) -> (Food, Vec<(usize, usize)>) {
+    let mut matched_food = Food {
+        ingredients: (0, 0),
+        allergens: 0,
+    };
 
     let mut matched = vec![];
-    while hash_count_one(found_allergens) < allergen_count {
+    while hash_count_one(matched_food.allergens) < allergen_count {
         for (&k, v) in possible.iter() {
-            if k & found_allergens != 0 {
+            if matched_food.contains_allergen(&k) {
                 continue;
             }
             let temp: Vec<_> = v
                 .iter()
-                .filter(|h| h.0 & found_ingredients.0 == 0 && h.1 & found_ingredients.1 == 0)
+                .filter(|h| !matched_food.contains_ingredient(h))
                 .collect();
             if temp.len() == 1 {
-                found_allergens |= k;
-                found_ingredients.0 |= temp[0].0;
-                found_ingredients.1 |= temp[0].1;
+                matched_food.update(*temp[0], k);
                 let a_id = hash_to_ids(k)[0];
-                let i_id = hash_to_ids(temp[0].0).get(0).unwrap_or(&0)
-                    + hash_to_ids(temp[0].1).get(0).unwrap_or(&0);
+                let i_id = hash_to_ids(temp[0].0).first().unwrap_or(&0)
+                    + hash_to_ids(temp[0].1).first().unwrap_or(&0);
                 matched.push((a_id, i_id));
             }
         }
     }
-    (found_ingredients, found_allergens, matched)
+    (matched_food, matched)
 }
 
 fn ingredient_id_to_hash(id: usize) -> (u128, u128) {
@@ -157,14 +157,6 @@ fn hash_count_one(num: u128) -> usize {
     count
 }
 
-fn update_found(id1: (u128, u128), id2: u128, found1: &mut (u128, u128), found2: &mut u128) {
-    println!("found {:?} <-> {}", id1, id2);
-
-    found1.0 |= id1.0;
-    found1.1 |= id1.1;
-    *found2 |= id2;
-}
-
 #[derive(Clone)]
 struct Food {
     ingredients: (u128, u128),
@@ -172,17 +164,6 @@ struct Food {
 }
 
 impl Food {
-    fn same_ingredients(&self, other: &Food) -> (u128, u128) {
-        (
-            self.ingredients.0 & other.ingredients.0,
-            self.ingredients.1 & other.ingredients.1,
-        )
-    }
-
-    fn same_allergens(&self, other: &Food) -> u128 {
-        self.allergens & other.allergens
-    }
-
     fn count_without_allergens(&self, found_ingredients: (u128, u128)) -> usize {
         let (mut h1, mut h2) = self.ingredients;
         h1 &= !found_ingredients.0;
@@ -190,57 +171,18 @@ impl Food {
         hash_count_one(h1) + hash_count_one(h2)
     }
 
-    fn ingredients_count(&self) -> usize {
-        let (h1, h2) = self.ingredients;
-        hash_count_one(h1) + hash_count_one(h2)
+    fn contains_ingredient(&self, h: &(u128, u128)) -> bool {
+        (self.ingredients.0 & h.0 != 0) || (self.ingredients.1 & h.1 != 0)
     }
 
-    fn allergens_count(&self) -> usize {
-        hash_count_one(self.allergens)
+    fn contains_allergen(&self, h: &u128) -> bool {
+        self.allergens & h != 0
     }
 
-    fn extract(&self, b: &Food, found1: &(u128, u128), found2: &u128) -> Food {
-        Food {
-            ingredients: self.same_ingredients(b),
-            allergens: self.same_allergens(b),
-        }
-        .exclude(found1, found2)
-    }
-
-    fn get_ingredients_ids(&self) -> Vec<usize> {
-        let (h1, h2) = self.ingredients;
-        let mut ingredients = hash_to_ids(h1);
-        ingredients.extend(hash_to_ids(h2));
-        ingredients
-    }
-
-    fn get_allergens_ids(&self) -> Vec<usize> {
-        hash_to_ids(self.allergens)
-    }
-
-    fn exclude(&self, found1: &(u128, u128), found2: &u128) -> Food {
-        let (mut h1, mut h2) = self.ingredients;
-        h1 &= !found1.0;
-        h2 &= !found1.1;
-
-        let mut h3 = self.allergens;
-        h3 &= !found2;
-        Food {
-            ingredients: (h1, h2),
-            allergens: h3,
-        }
-    }
-
-    fn matched(&self) -> Option<((u128, u128), u128)> {
-        let (h1, h2) = self.ingredients;
-        let h3 = self.allergens;
-        let count1 = self.ingredients_count();
-        let count2 = self.allergens_count();
-
-        if count2 == 1 && count1 == count2 {
-            return Some(((h1, h2), h3));
-        }
-        None
+    fn update(&mut self, id1: (u128, u128), id2: u128) {
+        self.ingredients.0 |= id1.0;
+        self.ingredients.1 |= id1.1;
+        self.allergens |= id2;
     }
 
     fn from_input(line: &str, index1: &mut Index, index2: &mut Index) -> Self {
