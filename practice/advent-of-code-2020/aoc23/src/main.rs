@@ -34,16 +34,17 @@ fn part1(cups: &[u32]) -> Result<String> {
 fn part2(cups: &[u32]) -> Result<u64> {
     let start = Instant::now();
 
-    let times = 1000000;
+    let total_cups = 20;
 
     let mut cups: Vec<u32> = cups.iter().map(|&n| n as u32).collect();
     let max = cups.iter().max().unwrap() + 1;
-    cups.extend(max..=times);
-    nth_moves(&mut cups, times);
+    cups.extend(max..=total_cups);
+    dbg!(cups.len());
+    nth_moves(&mut cups, total_cups * 10);
 
     let one_pos = cups.iter().position(|&n| n == 1).unwrap();
-    let r1 = cups[(one_pos + 1) % times as usize];
-    let r2 = cups[(one_pos + 2) % times as usize];
+    let r1 = cups[(one_pos + 1) % total_cups as usize];
+    let r2 = cups[(one_pos + 2) % total_cups as usize];
     dbg!(r1, r2);
     let result = r1 as u64 * r2 as u64;
 
@@ -60,6 +61,7 @@ fn nth_moves(cups: &mut Vec<u32>, times: u32) {
             println!("t: {}/100", t / 10000);
         }
         move_cup(cups, min, max);
+        println!("{:?}", cups);
     }
 }
 
@@ -67,6 +69,7 @@ fn move_cup(cups: &mut Vec<u32>, min: u32, max: u32) {
     let cur = cups.remove(0);
     let pick_up = [cups.remove(0), cups.remove(0), cups.remove(0)];
     let dest = dest(cur, &pick_up, min, max);
+    dbg!(cur, dest);
     let dest_pos = cups.iter().position(|&n| n == dest).unwrap() + 1;
     for (offset, n) in pick_up.into_iter().enumerate() {
         cups.insert(dest_pos + offset, n);
