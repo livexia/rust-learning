@@ -37,25 +37,19 @@ fn part2(cups: &[u32]) -> Result<u64> {
     let times = 1000000;
 
     let mut cups: Vec<u32> = cups.iter().map(|&n| n as u32).collect();
-    let cup_one = cups[1];
-    let cup_two = cups[2];
     let max = cups.iter().max().unwrap() + 1;
     cups.extend(max..=times);
     nth_moves(&mut cups, times);
 
-    let r1 = pos(&cups, cup_one, times);
-    let r2 = pos(&cups, cup_two, times);
+    let one_pos = cups.iter().position(|&n| n == 1).unwrap();
+    let r1 = cups[(one_pos + 1) % times as usize];
+    let r2 = cups[(one_pos + 2) % times as usize];
     dbg!(r1, r2);
-    let result = pos(&cups, cup_one, times) * pos(&cups, cup_two, times);
+    let result = r1 as u64 * r2 as u64;
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
-}
-
-fn pos(cups: &[u32], dest: u32, times: u32) -> u64 {
-    dbg!(cups.iter().position(|&n| n == dest));
-    ((cups.iter().position(|&n| n == dest).unwrap() + times as usize) % cups.len()) as u64
 }
 
 fn nth_moves(cups: &mut Vec<u32>, times: u32) {
