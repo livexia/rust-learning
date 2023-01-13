@@ -12,7 +12,7 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Deck = VecDeque<usize>;
+type Deck = VecDeque<u8>;
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -60,6 +60,12 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
+#[allow(dead_code)]
+fn own_hash(t: &Deck) -> String {
+    let v = Vec::from_iter(t.iter().cloned());
+    String::from_utf8(v).expect("Not a valid utf8")
+}
+
 fn game(player_one: &mut Deck, player_two: &mut Deck) -> bool {
     let mut player_one_decks = HashSet::new();
     let mut player_two_decks = HashSet::new();
@@ -71,13 +77,13 @@ fn game(player_one: &mut Deck, player_two: &mut Deck) -> bool {
         }
         let a = player_one.pop_front().unwrap();
         let b = player_two.pop_front().unwrap();
-        if a > player_one.len() || b > player_two.len() {
+        if a as usize > player_one.len() || b as usize > player_two.len() {
             wins(player_one, player_two, a > b, a, b);
         } else {
             let mut player_one_copy = player_one.clone();
-            player_one_copy.truncate(a);
+            player_one_copy.truncate(a as usize);
             let mut player_two_copy = player_two.clone();
-            player_two_copy.truncate(b);
+            player_two_copy.truncate(b as usize);
             let player_one_win = game(&mut player_one_copy, &mut player_two_copy);
             wins(player_one, player_two, player_one_win, a, b);
         }
@@ -85,7 +91,7 @@ fn game(player_one: &mut Deck, player_two: &mut Deck) -> bool {
     !player_one.is_empty()
 }
 
-fn wins(player_one: &mut Deck, player_two: &mut Deck, player_one_win: bool, a: usize, b: usize) {
+fn wins(player_one: &mut Deck, player_two: &mut Deck, player_one_win: bool, a: u8, b: u8) {
     if player_one_win {
         player_one.push_back(a);
         player_one.push_back(b);
@@ -100,7 +106,7 @@ fn score(player: &Deck) -> usize {
         .iter()
         .rev()
         .enumerate()
-        .fold(0, |sum, (i, n)| sum + (i + 1) * n)
+        .fold(0, |sum, (i, &n)| sum + (i + 1) * n as usize)
 }
 
 fn parse_input(input: &str) -> Result<(Deck, Deck)> {
