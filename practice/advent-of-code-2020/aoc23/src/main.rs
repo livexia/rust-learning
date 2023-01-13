@@ -46,7 +46,7 @@ fn part2(cups: &[u32]) -> Result<u64> {
     let r1 = pos(&cups, cup_one, times);
     let r2 = pos(&cups, cup_two, times);
     dbg!(r1, r2);
-    let result = pos(&cups, cup_one, times) + pos(&cups, cup_two, times);
+    let result = pos(&cups, cup_one, times) * pos(&cups, cup_two, times);
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -54,6 +54,7 @@ fn part2(cups: &[u32]) -> Result<u64> {
 }
 
 fn pos(cups: &[u32], dest: u32, times: u32) -> u64 {
+    dbg!(cups.iter().position(|&n| n == dest));
     ((cups.iter().position(|&n| n == dest).unwrap() + times as usize) % cups.len()) as u64
 }
 
