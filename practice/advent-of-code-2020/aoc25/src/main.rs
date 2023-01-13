@@ -22,27 +22,21 @@ fn main() -> Result<()> {
 fn part1(k1: Int, k2: Int) -> Result<Int> {
     let start = Instant::now();
 
-    let (l1, l2) = loop_size_test(k1, k2);
+    let l2 = loop_size_test(k2);
     let e1 = transform(k1, l2);
-    let e2 = transform(k2, l1);
-    assert_eq!(e1, e2);
 
     writeln!(io::stdout(), "Part 1: {e1}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(e1)
 }
 
-fn loop_size_test(k1: Int, k2: Int) -> (Int, Int) {
-    let mut loop_size = (0, 0);
+fn loop_size_test(k: Int) -> Int {
+    let mut loop_size = 0;
     let mut value = 1;
     for i in 1.. {
         value = value * 7 % 20201227;
-        if value == k1 {
-            loop_size.0 = i;
-        } else if value == k2 {
-            loop_size.1 = i;
-        }
-        if loop_size.0 != 0 && loop_size.1 != 0 {
+        if value == k {
+            loop_size = i;
             break;
         }
     }
@@ -68,7 +62,7 @@ fn parse_input(input: &str) -> Result<(Int, Int)> {
 #[test]
 fn example_input() {
     assert_eq!(17807724, transform(7, 11));
-    assert_eq!((11, 8), loop_size_test(17807724, 5764801));
+    assert_eq!(8, loop_size_test(5764801));
     assert_eq!(5764801, transform(7, 8));
     assert_eq!(14897079, transform(17807724, 8));
     assert_eq!(14897079, transform(5764801, 11));
