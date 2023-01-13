@@ -115,8 +115,6 @@ fn example_input() {
 
     let mut test = cups.clone();
     nth_moves(&mut test, 10);
-    println!("{:?}", test);
-    println!("{:?}", pos(&test, 6, 10));
     assert_eq!("92658374", order_after_one(&test));
 
     assert_eq!("67384529", part1(&cups).unwrap());
