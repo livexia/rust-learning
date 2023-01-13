@@ -15,48 +15,72 @@ fn main() -> Result<()> {
     let cups = parse_input(&input);
 
     part1(&cups)?;
-    // part2()?;
+    part2(&cups)?;
     Ok(())
 }
 
-fn part1(cups: &[u8]) -> Result<String> {
+fn part1(cups: &[u32]) -> Result<String> {
     let start = Instant::now();
 
-    let result = order_after_one(&nth_moves(cups, 100));
+    let mut cups = cups.to_owned();
+    nth_moves(&mut cups, 100);
+    let result = order_after_one(&cups);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn nth_moves(cups: &[u8], times: usize) -> Vec<u8> {
+fn part2(cups: &[u32]) -> Result<u64> {
+    let start = Instant::now();
+
+    let times = 1000000;
+
+    let mut cups: Vec<u32> = cups.iter().map(|&n| n as u32).collect();
+    let cup_one = cups[1];
+    let cup_two = cups[2];
+    let max = cups.iter().max().unwrap() + 1;
+    cups.extend(max..=times);
+    nth_moves(&mut cups, times);
+
+    let r1 = pos(&cups, cup_one, times);
+    let r2 = pos(&cups, cup_two, times);
+    dbg!(r1, r2);
+    let result = pos(&cups, cup_one, times) + pos(&cups, cup_two, times);
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn pos(cups: &[u32], dest: u32, times: u32) -> u64 {
+    ((cups.iter().position(|&n| n == dest).unwrap() + times as usize) % cups.len()) as u64
+}
+
+fn nth_moves(cups: &mut Vec<u32>, times: u32) {
     let &min = cups.iter().min().unwrap();
     let &max = cups.iter().max().unwrap();
-    let mut cups = cups.to_owned();
-    for _ in 0..times {
-        cups = move_cup(&cups, min, max);
-    }
-    cups
-}
-
-fn move_cup(cups: &[u8], min: u8, max: u8) -> Vec<u8> {
-    let cur = cups[0];
-    let pick_up = [cups[1], cups[2], cups[3]];
-    let dest = dest(cups, min, max);
-    let mut new_cups = vec![];
-    for &next in &cups[4..] {
-        new_cups.push(next);
-        if next == dest {
-            new_cups.extend_from_slice(&pick_up);
+    for t in 0..times {
+        if t % 10000 == 0 {
+            println!("t: {}/100", t / 10000);
         }
+        move_cup(cups, min, max);
     }
-    new_cups.push(cur);
-    new_cups
 }
 
-fn dest(cups: &[u8], min: u8, max: u8) -> u8 {
-    let mut cur = cups[0];
-    let pick_up = [cups[1], cups[2], cups[3]];
+fn move_cup(cups: &mut Vec<u32>, min: u32, max: u32) {
+    let cur = cups.remove(0);
+    let pick_up = [cups.remove(0), cups.remove(0), cups.remove(0)];
+    let dest = dest(cur, &pick_up, min, max);
+    let dest_pos = cups.iter().position(|&n| n == dest).unwrap() + 1;
+    for (offset, n) in pick_up.into_iter().enumerate() {
+        cups.insert(dest_pos + offset, n);
+    }
+    cups.push(cur);
+}
+
+fn dest(cur: u32, pick_up: &[u32; 3], min: u32, max: u32) -> u32 {
+    let mut cur = cur;
     loop {
         cur = if cur - 1 < min { max } else { cur - 1 };
         if !pick_up.contains(&cur) {
@@ -65,7 +89,7 @@ fn dest(cups: &[u8], min: u8, max: u8) -> u8 {
     }
 }
 
-fn order_after_one(cups: &[u8]) -> String {
+fn order_after_one(cups: &[u32]) -> String {
     let mut s = String::new();
     let mut found = 0;
     for &n in cups.iter().cycle() {
@@ -75,14 +99,18 @@ fn order_after_one(cups: &[u8]) -> String {
                 break;
             }
         } else if found == 1 {
-            s.push((n + b'0') as char)
+            s.push((n as u8 + b'0') as char)
         }
     }
     s
 }
 
-fn parse_input(input: &str) -> Vec<u8> {
-    input.trim().chars().map(|c| c as u8 - b'0').collect()
+fn parse_input(input: &str) -> Vec<u32> {
+    input
+        .trim()
+        .chars()
+        .map(|c| (c as u8 - b'0') as u32)
+        .collect()
 }
 
 #[test]
@@ -90,9 +118,13 @@ fn example_input() {
     let input = "389125467";
     let cups = parse_input(&input);
 
-    assert_eq!(vec![5, 7, 4, 1, 8, 3, 9, 2, 6], nth_moves(&cups, 9));
-    assert_eq!("92658374", order_after_one(&nth_moves(&cups, 10)));
-    assert_eq!("67384529", order_after_one(&nth_moves(&cups, 100)));
+    let mut test = cups.clone();
+    nth_moves(&mut test, 10);
+    println!("{:?}", test);
+    println!("{:?}", pos(&test, 6, 10));
+    assert_eq!("92658374", order_after_one(&test));
 
-    // part1(&cups).unwrap();
+    assert_eq!("67384529", part1(&cups).unwrap());
+
+    assert_eq!(149245887792, part2(&cups).unwrap());
 }
