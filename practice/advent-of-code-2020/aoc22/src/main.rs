@@ -1,6 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::collections::VecDeque;
-use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Read, Write};
@@ -30,8 +30,7 @@ fn part1(mut player_one: Deck, mut player_two: Deck) -> Result<usize> {
     while !player_one.is_empty() && !player_two.is_empty() {
         let a = player_one.pop_front().unwrap();
         let b = player_two.pop_front().unwrap();
-        let player_one_win = a > b;
-        wins(&mut player_one, &mut player_two, player_one_win, a, b);
+        wins(&mut player_one, &mut player_two, a > b, a, b);
     }
 
     let result = score(&player_one) + score(&player_two);
@@ -44,7 +43,7 @@ fn part1(mut player_one: Deck, mut player_two: Deck) -> Result<usize> {
 fn part2(mut player_one: Deck, mut player_two: Deck) -> Result<usize> {
     let start = Instant::now();
 
-    let result = if game(&mut player_one, &mut player_two, &mut HashMap::new()) {
+    let result = if game(&mut player_one, &mut player_two) {
         score(&player_one)
     } else {
         score(&player_two)
@@ -61,16 +60,7 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-fn game(
-    player_one: &mut Deck,
-    player_two: &mut Deck,
-    cache: &mut HashMap<(u64, u64), bool>,
-) -> bool {
-    let h1 = calculate_hash(&player_one);
-    let h2 = calculate_hash(&player_two);
-    if let Some(r) = cache.get(&(h1, h2)) {
-        return *r;
-    }
+fn game(player_one: &mut Deck, player_two: &mut Deck) -> bool {
     let mut player_one_decks = HashSet::new();
     let mut player_two_decks = HashSet::new();
     while !player_one.is_empty() && !player_two.is_empty() {
@@ -82,20 +72,17 @@ fn game(
         let a = player_one.pop_front().unwrap();
         let b = player_two.pop_front().unwrap();
         if a > player_one.len() || b > player_two.len() {
-            let player_one_win = a > b;
-            wins(player_one, player_two, player_one_win, a, b);
+            wins(player_one, player_two, a > b, a, b);
         } else {
             let mut player_one_copy = player_one.clone();
             player_one_copy.truncate(a);
             let mut player_two_copy = player_two.clone();
             player_two_copy.truncate(b);
-            let player_one_win = game(&mut player_one_copy, &mut player_two_copy, cache);
+            let player_one_win = game(&mut player_one_copy, &mut player_two_copy);
             wins(player_one, player_two, player_one_win, a, b);
         }
     }
-    let r = !player_one.is_empty();
-    cache.insert((h1, h2), r);
-    r
+    !player_one.is_empty()
 }
 
 fn wins(player_one: &mut Deck, player_two: &mut Deck, player_one_win: bool, a: usize, b: usize) {
