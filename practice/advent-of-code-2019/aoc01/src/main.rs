@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let mods = parse_input(&input)?;
 
     part1(&mods)?;
-    // part2()?;
+    part2(&mods)?;
     Ok(())
 }
 
@@ -30,8 +30,28 @@ fn part1(mods: &[Int]) -> Result<Int> {
     Ok(result)
 }
 
+fn part2(mods: &[Int]) -> Result<Int> {
+    let start = Instant::now();
+
+    let result: Int = mods.iter().cloned().map(calc_total_fuel).sum();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn calc_total_fuel(mass: Int) -> Int {
+    let mut total = 0;
+    let mut mass = mass;
+    while mass != 0 {
+        mass = calc_fuel(mass);
+        total += mass;
+    }
+    total
+}
+
 fn calc_fuel(mass: Int) -> Int {
-    (mass / 3) - 2
+    (mass / 3).saturating_sub(2)
 }
 
 fn parse_input(input: &str) -> Result<Vec<Int>> {
