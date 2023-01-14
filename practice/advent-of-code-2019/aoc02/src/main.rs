@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let program = parse_input(&input)?;
 
     part1(&program)?;
-    // part2()?;
+    part2(&program)?;
     Ok(())
 }
 
@@ -24,14 +24,42 @@ fn part1(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
     let mut program = program.to_owned();
-    program[1] = 12;
-    program[2] = 2;
-    run_program(&mut program);
+    run_program_with_noun_verb(&mut program, 12, 2);
     let result = program[0];
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
+}
+
+fn part2(program: &[Int]) -> Result<Int> {
+    let start = Instant::now();
+
+    let (noun, verb) = search_noun_verb(program, 19690720)?;
+    let result = 100 * noun + verb;
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn search_noun_verb(program: &[Int], dest: Int) -> Result<(Int, Int)> {
+    for noun in 0..99 {
+        for verb in 0..99 {
+            let mut test = program.to_owned();
+            run_program_with_noun_verb(&mut test, noun, verb);
+            if test[0] == dest {
+                return Ok((noun, verb));
+            }
+        }
+    }
+    err!("can not find valid noun and verb for input")
+}
+
+fn run_program_with_noun_verb(program: &mut [Int], noun: Int, verb: Int) {
+    program[1] = noun;
+    program[2] = verb;
+    run_program(program);
 }
 
 fn run_program(program: &mut [Int]) {
