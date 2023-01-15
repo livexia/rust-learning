@@ -48,16 +48,14 @@ fn run_program(program: &mut [Int], input: Int, output: &mut Int) {
     while pc < program.len() {
         let (opcode, f1, f2, f3) = parse_opcode(program[pc]);
         let op1 = addr_lookup(program, pc + 1, f1);
+        let op2 = addr_lookup(program, pc + 2, f2);
+        let dest = addr_lookup(program, pc + 3, f3);
         match opcode {
             1 => {
-                let op2 = addr_lookup(program, pc + 2, f2);
-                let dest = addr_lookup(program, pc + 3, f3);
                 program[dest] = program[op1] + program[op2];
                 pc += 4;
             }
             2 => {
-                let op2 = addr_lookup(program, pc + 2, f2);
-                let dest = addr_lookup(program, pc + 3, f3);
                 program[dest] = program[op1] * program[op2];
                 pc += 4;
             }
