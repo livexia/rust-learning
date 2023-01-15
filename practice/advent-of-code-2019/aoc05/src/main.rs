@@ -24,9 +24,7 @@ fn main() -> Result<()> {
 fn part1(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    let mut output = 0;
-    let mut program = program.to_owned();
-    run_program(&mut program, 1, &mut output);
+    let output = run_program(&mut program.to_owned(), 1);
 
     writeln!(io::stdout(), "Part 1: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -36,16 +34,15 @@ fn part1(program: &[Int]) -> Result<Int> {
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    let mut output = 0;
-    let mut program = program.to_owned();
-    run_program(&mut program, 5, &mut output);
+    let output = run_program(&mut program.to_owned(), 5);
 
     writeln!(io::stdout(), "Part 2: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
 }
 
-fn run_program(program: &mut [Int], input: Int, output: &mut Int) {
+fn run_program(program: &mut [Int], input: Int) -> Int {
+    let mut output = 0;
     let mut pc = 0;
     while pc < program.len() {
         let (opcode, f1, f2, f3) = parse_opcode(program[pc]);
@@ -60,7 +57,7 @@ fn run_program(program: &mut [Int], input: Int, output: &mut Int) {
                 pc += 2
             }
             4 => {
-                *output = program[op1];
+                output = program[op1];
                 pc += 2
             }
             5 => {
@@ -79,13 +76,14 @@ fn run_program(program: &mut [Int], input: Int, output: &mut Int) {
                     pc += 3
                 }
             }
-            99 => return,
+            99 => return output,
             _ => unreachable!(
                 "Encountering an unknown opcode means something went wrong: {}",
                 opcode
             ),
         };
     }
+    output
 }
 
 fn instr_with_four(program: &mut [Int], pc: Addr, opcode: Int, f1: bool, f2: bool, f3: bool) {
@@ -117,9 +115,7 @@ fn addr_lookup(program: &[Int], pc: Addr, flag: bool) -> Addr {
     if flag {
         pc
     } else {
-        if program[pc] < 0 {
-            unreachable!()
-        }
+        assert_eq!(program[pc] >= 0, true);
         program[pc] as usize
     }
 }
