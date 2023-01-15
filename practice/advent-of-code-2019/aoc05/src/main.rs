@@ -36,11 +36,13 @@ fn part1(program: &[Int]) -> Result<Int> {
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    let result = 0;
+    let mut output = 0;
+    let mut program = program.to_owned();
+    run_program(&mut program, 5, &mut output);
 
-    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "Part 2: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(result)
+    Ok(output)
 }
 
 fn run_program(program: &mut [Int], input: Int, output: &mut Int) {
@@ -48,15 +50,9 @@ fn run_program(program: &mut [Int], input: Int, output: &mut Int) {
     while pc < program.len() {
         let (opcode, f1, f2, f3) = parse_opcode(program[pc]);
         let op1 = addr_lookup(program, pc + 1, f1);
-        let op2 = addr_lookup(program, pc + 2, f2);
-        let dest = addr_lookup(program, pc + 3, f3);
         match opcode {
-            1 => {
-                program[dest] = program[op1] + program[op2];
-                pc += 4;
-            }
-            2 => {
-                program[dest] = program[op1] * program[op2];
+            1 | 2 | 7 | 8 => {
+                instr_with_four(program, pc, opcode, f1, f2, f3);
                 pc += 4;
             }
             3 => {
@@ -67,12 +63,41 @@ fn run_program(program: &mut [Int], input: Int, output: &mut Int) {
                 *output = program[op1];
                 pc += 2
             }
+            5 => {
+                let op2 = addr_lookup(program, pc + 2, f2);
+                if program[op1] != 0 {
+                    pc = program[op2] as usize;
+                } else {
+                    pc += 3
+                }
+            }
+            6 => {
+                let op2 = addr_lookup(program, pc + 2, f2);
+                if program[op1] == 0 {
+                    pc = program[op2] as usize;
+                } else {
+                    pc += 3
+                }
+            }
             99 => return,
             _ => unreachable!(
                 "Encountering an unknown opcode means something went wrong: {}",
                 opcode
             ),
         };
+    }
+}
+
+fn instr_with_four(program: &mut [Int], pc: Addr, opcode: Int, f1: bool, f2: bool, f3: bool) {
+    let op1 = addr_lookup(program, pc + 1, f1);
+    let op2 = addr_lookup(program, pc + 2, f2);
+    let dest = addr_lookup(program, pc + 3, f3);
+    program[dest] = match opcode {
+        1 => program[op1] + program[op2],
+        2 => program[op1] * program[op2],
+        7 => (program[op1] < program[op2]) as Int,
+        8 => (program[op1] == program[op2]) as Int,
+        _ => unreachable!(),
     }
 }
 
