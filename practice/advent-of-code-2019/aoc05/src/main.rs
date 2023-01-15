@@ -115,7 +115,7 @@ fn addr_lookup(program: &[Int], pc: Addr, flag: bool) -> Addr {
     if flag {
         pc
     } else {
-        assert_eq!(program[pc] >= 0, true);
+        assert!(program[pc] >= 0);
         program[pc] as usize
     }
 }
