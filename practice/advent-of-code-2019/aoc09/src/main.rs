@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
+use std::iter::repeat;
 use std::time::Instant;
 
 #[allow(unused_macros)]
@@ -43,7 +43,7 @@ fn part2(program: &[Int]) -> Result<Int> {
     computer.run();
     let &output = computer.output.last().unwrap();
 
-    writeln!(io::stdout(), "Part 1: {output}")?;
+    writeln!(io::stdout(), "Part 2: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
 }
@@ -54,7 +54,6 @@ struct Computer {
     base: Int,
     input: Vec<Int>,
     output: Vec<Int>,
-    heap: HashMap<Addr, Int>,
 }
 
 impl Computer {
@@ -65,7 +64,6 @@ impl Computer {
             base: 0,
             input: vec![],
             output: vec![],
-            heap: HashMap::new(),
         }
     }
 
@@ -162,23 +160,18 @@ impl Computer {
     }
 
     fn get(&self, addr: Addr) -> Int {
-        if addr > self.program.len() - 1 {
-            if let Some(v) = self.heap.get(&addr) {
-                *v
-            } else {
-                0
-            }
-        } else {
-            self.program[addr]
-        }
+        *self.program.get(addr).unwrap_or(&0)
     }
 
     fn set(&mut self, addr: Addr, value: Int) {
         if addr > self.program.len() - 1 {
-            self.heap.insert(addr, value);
-        } else {
-            self.program[addr] = value;
+            let mut l = addr + 1 - self.program.len();
+            if l < 50 {
+                l = 50;
+            }
+            self.program.extend(repeat(0).take(l));
         }
+        self.program[addr] = value;
     }
 }
 
