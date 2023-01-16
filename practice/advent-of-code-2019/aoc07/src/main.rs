@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -8,7 +9,7 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Int = isize;
+type Int = i128;
 type Addr = usize;
 
 fn main() -> Result<()> {
@@ -24,35 +25,9 @@ fn main() -> Result<()> {
 fn part1(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    dbg!(run_with_seq(program, &[4, 3, 2, 1, 0]));
     let mut output = Int::MIN;
-    for a in 0..5 {
-        let mut seq = vec![a];
-        for b in 0..5 {
-            if !seq.contains(&b) {
-                seq.push(b);
-                for c in 0..5 {
-                    if !seq.contains(&c) {
-                        seq.push(c);
-                        for d in 0..5 {
-                            if !seq.contains(&d) {
-                                seq.push(d);
-                                for e in 0..5 {
-                                    if !seq.contains(&e) {
-                                        seq.push(e);
-                                        output = output.max(run_with_seq(program, &seq));
-                                        seq.pop();
-                                    }
-                                }
-                                seq.pop();
-                            }
-                        }
-                        seq.pop();
-                    }
-                }
-                seq.pop();
-            }
-        }
+    for seq in (0..5).permutations(5).unique() {
+        output = output.max(run_with_seq(program, &seq, true));
     }
 
     writeln!(io::stdout(), "Part 1: {output}")?;
@@ -63,65 +38,111 @@ fn part1(program: &[Int]) -> Result<Int> {
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    let output = 0;
+    let mut output = 0;
+    for seq in (5..10).permutations(5).unique() {
+        output = output.max(run_with_seq(program, &seq, false));
+    }
 
     writeln!(io::stdout(), "Part 2: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
 }
 
-fn run_with_seq(program: &[Int], seq: &[Int]) -> Int {
-    let mut input = 0;
+fn run_with_seq(program: &[Int], seq: &[Int], restart: bool) -> Int {
+    let mut last_output = 0;
+    let mut amps = vec![];
+    let mut status = 0;
     for &i in seq {
-        let mut n_p = program.to_owned();
-        input = run_program(&mut n_p, &mut vec![input, i])
+        amps.push(Amp::new(program, i))
     }
-    input
+    loop {
+        for p in amps.iter_mut() {
+            p.add_input(last_output);
+            status = p.run_program();
+            last_output = p.output;
+        }
+        if status == 99 {
+            break;
+        }
+        if restart {
+            break;
+        }
+    }
+    last_output
 }
 
-fn run_program(program: &mut [Int], input: &mut Vec<Int>) -> Int {
-    let mut output = 0;
-    let mut pc = 0;
-    while pc < program.len() {
-        let (opcode, f1, f2, f3) = parse_opcode(program[pc]);
-        let op1 = addr_lookup(program, pc + 1, f1);
-        match opcode {
-            1 | 2 | 7 | 8 => {
-                instr_with_four(program, pc, opcode, f1, f2, f3);
-                pc += 4;
-            }
-            3 => {
-                program[op1] = input.pop().unwrap();
-                pc += 2
-            }
-            4 => {
-                output = program[op1];
-                pc += 2
-            }
-            5 => {
-                let op2 = addr_lookup(program, pc + 2, f2);
-                if program[op1] != 0 {
-                    pc = program[op2] as usize;
-                } else {
-                    pc += 3
-                }
-            }
-            6 => {
-                let op2 = addr_lookup(program, pc + 2, f2);
-                if program[op1] == 0 {
-                    pc = program[op2] as usize;
-                } else {
-                    pc += 3
-                }
-            }
-            99 => return output,
-            _ => unreachable!(
-                "Encountering an unknown opcode means something went wrong: {}",
-                opcode
-            ),
-        };
+struct Amp {
+    program: Vec<Int>,
+    pc: Addr,
+    input: Vec<Int>,
+    output: Int,
+}
+
+impl Amp {
+    fn new(program: &[Int], setting: Int) -> Self {
+        Amp {
+            program: program.to_owned(),
+            pc: 0,
+            input: vec![setting],
+            output: 0,
+        }
     }
-    output
+
+    fn add_input(&mut self, i: Int) {
+        self.input.push(i);
+        self.input.reverse();
+    }
+
+    fn run_program(&mut self) -> Int {
+        while self.pc < self.program.len() {
+            let (opcode, f1, f2, f3) = parse_opcode(self.program[self.pc]);
+            if opcode == 99 {
+                return 99;
+            }
+            let op1 = addr_lookup(&self.program, self.pc + 1, f1);
+            match opcode {
+                1 | 2 | 7 | 8 => {
+                    instr_with_four(&mut self.program, self.pc, opcode, f1, f2, f3);
+                    self.pc += 4;
+                }
+                3 => {
+                    if let Some(i) = self.input.pop() {
+                        self.program[op1] = i;
+                        self.pc += 2
+                    } else {
+                        return 3;
+                    }
+                }
+                4 => {
+                    self.output = self.program[op1];
+                    self.pc += 2;
+                    return 4;
+                }
+                5 => {
+                    let op2 = addr_lookup(&self.program, self.pc + 2, f2);
+                    if self.program[op1] != 0 {
+                        self.pc = self.program[op2] as usize;
+                    } else {
+                        self.pc += 3
+                    }
+                }
+                6 => {
+                    let op2 = addr_lookup(&self.program, self.pc + 2, f2);
+                    if self.program[op1] == 0 {
+                        self.pc = self.program[op2] as usize;
+                    } else {
+                        self.pc += 3
+                    }
+                }
+                // 99 => return 99,
+                _ => unreachable!(
+                    "Encountering an unknown opcode means something went wrong: {}",
+                    opcode
+                ),
+            };
+        }
+        0
+    }
 }
 
 fn instr_with_four(program: &mut [Int], pc: Addr, opcode: Int, f1: bool, f2: bool, f3: bool) {
@@ -137,16 +158,13 @@ fn instr_with_four(program: &mut [Int], pc: Addr, opcode: Int, f1: bool, f2: boo
     }
 }
 
-fn parse_opcode(mut opcode: Int) -> (Int, bool, bool, bool) {
-    let mut r = (0, false, false, false);
-    r.0 = opcode % 100;
-    opcode /= 100;
-    r.1 = opcode % 10 == 1;
-    opcode /= 10;
-    r.2 = opcode % 10 == 1;
-    opcode /= 10;
-    r.3 = opcode % 10 == 1;
-    r
+fn parse_opcode(opcode: Int) -> (Int, bool, bool, bool) {
+    (
+        opcode % 100,
+        (opcode / 100) % 10 == 1,
+        (opcode / 1000) % 10 == 1,
+        (opcode / 10000) % 10 == 1,
+    )
 }
 
 fn addr_lookup(program: &[Int], pc: Addr, flag: bool) -> Addr {
@@ -190,5 +208,35 @@ fn example_input() {
         ])
         .unwrap(),
         65210
+    );
+
+    assert_eq!(
+        run_with_seq(
+            &vec![
+                3, 26, 1001, 26, -4, 26, 3, 27, 1002, 27, 2, 27, 1, 27, 26, 27, 4, 27, 1001, 28,
+                -1, 28, 1005, 28, 6, 99, 0, 0, 5
+            ],
+            &[9, 8, 7, 6, 5],
+            false
+        ),
+        139629729
+    );
+
+    assert_eq!(
+        part2(&vec![
+            3, 26, 1001, 26, -4, 26, 3, 27, 1002, 27, 2, 27, 1, 27, 26, 27, 4, 27, 1001, 28, -1,
+            28, 1005, 28, 6, 99, 0, 0, 5
+        ])
+        .unwrap(),
+        139629729
+    );
+    assert_eq!(
+        part2(&vec![
+            3, 52, 1001, 52, -5, 52, 3, 53, 1, 52, 56, 54, 1007, 54, 5, 55, 1005, 55, 26, 1001, 54,
+            -5, 54, 1105, 1, 12, 1, 53, 54, 53, 1008, 54, 0, 55, 1001, 55, 1, 55, 2, 53, 55, 53, 4,
+            53, 1001, 56, -1, 56, 1005, 56, 6, 99, 0, 0, 0, 0, 10
+        ])
+        .unwrap(),
+        18216
     );
 }
