@@ -38,9 +38,12 @@ fn part1(program: &[Int]) -> Result<Int> {
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    let mut output = 0;
+    let mut computer = Computer::new(program);
+    computer.add_input(2);
+    computer.run();
+    let &output = computer.output.last().unwrap();
 
-    writeln!(io::stdout(), "Part 2: {output}")?;
+    writeln!(io::stdout(), "Part 1: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
 }
