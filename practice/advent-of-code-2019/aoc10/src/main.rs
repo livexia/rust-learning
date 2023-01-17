@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(map: &HashSet<Coord>) -> Result<usize> {
+fn part1(map: &[Coord]) -> Result<usize> {
     let start = Instant::now();
 
     let visible = build_visible(map);
@@ -33,16 +33,18 @@ fn part1(map: &HashSet<Coord>) -> Result<usize> {
     Ok(max_visible)
 }
 
-fn part2(map: &HashSet<Coord>) -> Result<i32> {
+fn part2(map: &[Coord]) -> Result<i32> {
     let start = Instant::now();
 
     let visible = build_visible(map);
 
-    let (center, station_visible) = visible.into_iter().max_by_key(|(_, h)| h.len()).unwrap();
+    let (center, mut station_visible) = visible.into_iter().max_by_key(|(_, h)| h.len()).unwrap();
 
-    let mut station_visible: Vec<_> = station_visible.into_iter().collect();
+    // https://doc.rust-lang.org/std/primitive.f64.html#method.atan2
+    // use atan2 to sort the visible location
     station_visible.sort_by(|&c1, &c2| atan2(c1, center).partial_cmp(&atan2(c2, center)).unwrap());
-
+    assert!(station_visible.len() > 200);
+    // find the first visible location
     let index = (station_visible
         .iter()
         .position(|&c| c.0 == center.0 && c.1 < center.1)
@@ -61,26 +63,21 @@ fn atan2(c1: Coord, c2: Coord) -> f64 {
     ((c1.1 - c2.1) as f64).atan2((c1.0 - c2.0) as f64)
 }
 
-fn build_visible(map: &HashSet<Coord>) -> HashMap<Coord, HashSet<Coord>> {
-    let mut visited = HashSet::new();
-    let mut r: HashMap<Coord, HashSet<Coord>> = HashMap::new();
-    for &c1 in map {
-        for &c2 in map {
-            if c1 == c2 || visited.contains(&c2) {
-                continue;
-            }
-            if visible(c1, c2, map) {
-                r.entry(c1).or_default().insert(c2);
-                r.entry(c2).or_default().insert(c1);
+fn build_visible(map: &[Coord]) -> HashMap<Coord, Vec<Coord>> {
+    let mut r: HashMap<Coord, Vec<Coord>> = HashMap::new();
+    for (i, &c1) in map.iter().enumerate() {
+        for &c2 in map.iter().skip(i + 1) {
+            if visible(c1, c2, &map[i + 1..]) {
+                r.entry(c1).or_default().push(c2);
+                r.entry(c2).or_default().push(c1);
             }
         }
-        visited.insert(c1);
     }
 
     r
 }
 
-fn visible(c1: Coord, c2: Coord, map: &HashSet<Coord>) -> bool {
+fn visible(c1: Coord, c2: Coord, map: &[Coord]) -> bool {
     for &c3 in map {
         if c3 == c1 || c3 == c2 {
             continue;
@@ -121,12 +118,12 @@ fn squared_lenth(c1: Coord, c2: Coord) -> i32 {
     (c1.0 - c2.0).pow(2) + (c1.1 - c2.1).pow(2)
 }
 
-fn parse_input(input: &str) -> HashSet<Coord> {
-    let mut map = HashSet::new();
+fn parse_input(input: &str) -> Vec<Coord> {
+    let mut map = Vec::new();
     for (y, line) in input.lines().enumerate() {
         for (x, char) in line.trim().char_indices() {
             if char == '#' {
-                map.insert((x as i32, y as i32));
+                map.push((x as i32, y as i32));
             }
         }
     }
