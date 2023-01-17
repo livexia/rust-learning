@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<u64> {
+fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<u16> {
     let start = Instant::now();
 
     let l = moons.len();
@@ -61,55 +61,40 @@ fn part2(mut moons: Vec<Moon>) -> Result<u64> {
 
 // https://www.reddit.com/r/adventofcode/comments/e9jxh2/comment/faje38l
 fn find_step_for_one_axis(moons: &mut [Moon], axis: u8) -> u64 {
-    fn get_pos(moons: &[Moon], axis: u8) -> Vec<Coord> {
-        moons
-            .iter()
-            .map(|m| match axis {
-                0 => m.x(),
-                1 => m.y(),
-                2 => m.z(),
-                _ => unreachable!(),
-            })
-            .collect()
-    }
+    let init_pos: Vec<_> = moons.iter().map(|m| m.get_pos(axis)).collect();
+    let init_vel = vec![0; moons.len()];
 
-    fn get_vel(moons: &[Moon], axis: u8) -> Vec<Coord> {
-        moons
-            .iter()
-            .map(|m| match axis {
-                0 => m.vel.0,
-                1 => m.vel.1,
-                2 => m.vel.2,
-                _ => unreachable!(),
-            })
-            .collect()
-    }
-    let init_pos = get_pos(moons, axis);
-    let init_vel = get_vel(moons, axis);
     let l = moons.len();
+    let mut pos = init_pos.clone();
+    let mut vel = init_vel.clone();
     for step in 1.. {
         for i in 0..l {
             for j in i + 1..l {
-                apply_gravity_on_one_axis(moons, i, j, axis);
+                apply_gravity_on_one_axis(&mut vel, &pos, i, j);
             }
         }
-        moons
-            .iter_mut()
-            .for_each(|m| m.apply_velocity_on_one_axis(axis));
-        if get_pos(moons, axis) == init_pos && get_vel(moons, axis) == init_vel {
+        apply_velocity_on_one_axis(&mut pos, &vel);
+        if vel == init_vel && pos == init_pos {
             return step;
         }
     }
     0
 }
 
-fn lcm(a: u64, b: u64) -> u64 {
-    let (a, b) = if a > b { (b, a) } else { (a, b) };
-    let mut r = b;
-    while r % a != 0 {
-        r += b;
+// From https://doc.rust-lang.org/std/ops/trait.Div.html
+// Euclid's two-thousand-year-old algorithm for finding the greatest common
+// divisor.
+fn gcd(mut x: u64, mut y: u64) -> u64 {
+    while y != 0 {
+        let t = y;
+        y = x % y;
+        x = t;
     }
-    r
+    x
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    a * b / gcd(a, b)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -125,11 +110,11 @@ impl Moon {
         self.pos.2 += self.vel.2;
     }
 
-    fn apply_velocity_on_one_axis(&mut self, axis: u8) {
+    fn get_pos(&self, axis: u8) -> Coord {
         match axis {
-            0 => self.pos.0 += self.vel.0,
-            1 => self.pos.1 += self.vel.1,
-            2 => self.pos.2 += self.vel.2,
+            0 => self.x(),
+            1 => self.y(),
+            2 => self.z(),
             _ => unreachable!(),
         }
     }
@@ -146,37 +131,28 @@ impl Moon {
         self.pos.2
     }
 
-    fn pot(&self) -> u64 {
-        self.pos.0.abs() as u64 + self.pos.1.abs() as u64 + self.pos.2.abs() as u64
+    fn pot(&self) -> u16 {
+        self.pos.0.unsigned_abs() + self.pos.1.unsigned_abs() + self.pos.2.unsigned_abs()
     }
 
-    fn kin(&self) -> u64 {
-        self.vel.0.abs() as u64 + self.vel.1.abs() as u64 + self.vel.2.abs() as u64
+    fn kin(&self) -> u16 {
+        self.vel.0.unsigned_abs() + self.vel.1.unsigned_abs() + self.vel.2.unsigned_abs()
     }
 
-    fn total(&self) -> u64 {
+    fn total(&self) -> u16 {
         self.pot() * self.kin()
     }
 }
 
-fn apply_gravity_on_one_axis(moons: &mut [Moon], a: usize, b: usize, axis: u8) {
-    match axis {
-        0 => {
-            let dx = change_velocity(moons[a].x(), moons[b].x());
-            moons[a].vel.0 += dx;
-            moons[b].vel.0 -= dx;
-        }
-        1 => {
-            let dy = change_velocity(moons[a].y(), moons[b].y());
-            moons[a].vel.1 += dy;
-            moons[b].vel.1 -= dy;
-        }
-        2 => {
-            let dz = change_velocity(moons[a].z(), moons[b].z());
-            moons[a].vel.2 += dz;
-            moons[b].vel.2 -= dz;
-        }
-        _ => unreachable!(),
+fn apply_gravity_on_one_axis(vel: &mut [Coord], pos: &[Coord], i: usize, j: usize) {
+    let d = change_velocity(pos[i], pos[j]);
+    vel[i] += d;
+    vel[j] -= d;
+}
+
+fn apply_velocity_on_one_axis(pos: &mut [Coord], vel: &[Coord]) {
+    for (p, v) in pos.iter_mut().zip(vel.iter()) {
+        *p += v
     }
 }
 
