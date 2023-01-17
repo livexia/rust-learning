@@ -30,7 +30,7 @@ fn part1(program: &[Int]) -> Result<usize> {
     let mut computer = Computer::new(program);
     let mut robot = Robot::new();
     let mut grid = HashMap::new();
-    while robot.paint(&mut grid, &mut computer) != 99 {}
+    while robot.paint(&mut grid, &mut computer, 0) != 99 {}
     let output = grid.len();
 
     writeln!(io::stdout(), "Part 1: {output}")?;
@@ -38,18 +38,46 @@ fn part1(program: &[Int]) -> Result<usize> {
     Ok(output)
 }
 
-fn part2(program: &[Int]) -> Result<usize> {
+fn part2(program: &[Int]) -> Result<String> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
     let mut robot = Robot::new();
     let mut grid = HashMap::new();
-    while robot.paint(&mut grid, &mut computer) != 99 {}
-    let output = grid.len();
+    while robot.paint(&mut grid, &mut computer, 1) != 99 {}
+    let output = draw(&grid, 1);
 
-    writeln!(io::stdout(), "Part 2: {output}")?;
+    writeln!(io::stdout(), "Part 2: \n{output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
+}
+
+fn draw(grid: &HashMap<Coord, u8>, default_color: u8) -> String {
+    let mut s = String::new();
+    let (mut min_x, mut min_y) = (i32::MAX, i32::MAX);
+    let (mut max_x, mut max_y) = (i32::MIN, i32::MIN);
+    for &(x, y) in grid.keys() {
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+    }
+
+    for x in min_x..=max_x {
+        for y in min_y..=max_y {
+            if let Some(&color) = grid.get(&(x, y)) {
+                if color == default_color {
+                    s.push('#')
+                } else {
+                    s.push(' ')
+                }
+            } else {
+                s.push(' ')
+            };
+        }
+        s.push('\n')
+    }
+    s
 }
 
 struct Robot {
@@ -92,8 +120,13 @@ impl Robot {
         (self.x, self.y)
     }
 
-    fn paint(&mut self, grid: &mut HashMap<Coord, u8>, computer: &mut Computer) -> Int {
-        let &input = grid.get(&self.coord()).unwrap_or(&0);
+    fn paint(
+        &mut self,
+        grid: &mut HashMap<Coord, u8>,
+        computer: &mut Computer,
+        default_color: u8,
+    ) -> Int {
+        let &input = grid.get(&self.coord()).unwrap_or(&default_color);
         computer.add_input(input as Int);
         let (status, output) = Robot::run_program(computer);
         if status == 4 {
