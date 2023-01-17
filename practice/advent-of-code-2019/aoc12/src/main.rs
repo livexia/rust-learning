@@ -9,7 +9,8 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Pos = (i32, i32, i32);
+type Coord = i64;
+type Pos = (Coord, Coord, Coord);
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -21,11 +22,11 @@ fn main() -> Result<()> {
         .collect::<Result<Vec<Moon>>>()?;
 
     part1(moons.clone(), 1000)?;
-    // part2()?;
+    part2(moons.clone())?;
     Ok(())
 }
 
-fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<i32> {
+fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<Coord> {
     let start = Instant::now();
 
     let l = moons.len();
@@ -48,10 +49,38 @@ fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<i32> {
     Ok(result)
 }
 
-#[derive(Debug, Clone)]
+fn part2(mut moons: Vec<Moon>) -> Result<Coord> {
+    let start = Instant::now();
+
+    let init_moons = moons.clone();
+    let l = moons.len();
+    let mut result = 0;
+    for step in 1.. {
+        for i in 0..l {
+            for j in 0..l {
+                if i == j {
+                    continue;
+                }
+                let pos = moons[j].pos;
+                moons[i].apply_gravity(pos);
+            }
+        }
+        moons.iter_mut().for_each(|m| m.apply_velocity());
+        if init_moons.iter().zip(moons.iter()).all(|(m1, m2)| m1 == m2) {
+            result = step;
+            break;
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Moon {
-    pos: (i32, i32, i32),
-    vel: (i32, i32, i32),
+    pos: Pos,
+    vel: Pos,
 }
 
 impl Moon {
@@ -67,32 +96,32 @@ impl Moon {
         self.pos.2 += self.vel.2;
     }
 
-    fn x(&self) -> i32 {
+    fn x(&self) -> Coord {
         self.pos.0
     }
 
-    fn y(&self) -> i32 {
+    fn y(&self) -> Coord {
         self.pos.1
     }
 
-    fn z(&self) -> i32 {
+    fn z(&self) -> Coord {
         self.pos.2
     }
 
-    fn pot(&self) -> i32 {
+    fn pot(&self) -> Coord {
         self.pos.0.abs() + self.pos.1.abs() + self.pos.2.abs()
     }
 
-    fn kin(&self) -> i32 {
+    fn kin(&self) -> Coord {
         self.vel.0.abs() + self.vel.1.abs() + self.vel.2.abs()
     }
 
-    fn total(&self) -> i32 {
+    fn total(&self) -> Coord {
         self.pot() * self.kin()
     }
 }
 
-fn change_velocity(a: i32, b: i32) -> i32 {
+fn change_velocity(a: Coord, b: Coord) -> Coord {
     match a.cmp(&b) {
         std::cmp::Ordering::Less => 1,
         std::cmp::Ordering::Equal => 0,
@@ -132,6 +161,7 @@ fn example_input() {
         .collect::<Result<Vec<Moon>>>()
         .unwrap();
     assert_eq!(part1(moons.clone(), 10).unwrap(), 179);
+    assert_eq!(part2(moons).unwrap(), 2772);
 
     let input = "<x=-8, y=-10, z=0>
     <x=5, y=5, z=10>
@@ -144,4 +174,5 @@ fn example_input() {
         .collect::<Result<Vec<Moon>>>()
         .unwrap();
     assert_eq!(part1(moons.clone(), 100).unwrap(), 1940);
+    assert_eq!(part2(moons).unwrap(), 4686774924);
 }
