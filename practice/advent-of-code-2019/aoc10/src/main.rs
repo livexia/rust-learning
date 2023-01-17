@@ -17,31 +17,67 @@ fn main() -> Result<()> {
     let map = parse_input(&input);
 
     part1(&map)?;
-    // part2()?;
+    part2(&map)?;
     Ok(())
 }
 
 fn part1(map: &HashSet<Coord>) -> Result<usize> {
     let start = Instant::now();
 
-    let mut dp: HashMap<Coord, Vec<Coord>> = HashMap::new();
+    let visible = build_visible(map);
 
-    for &c1 in map.iter() {
-        let entry = dp.entry(c1).or_default();
+    let max_visible = visible.values().map(|h| h.len()).max().unwrap();
+
+    writeln!(io::stdout(), "Part 1: {max_visible}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(max_visible)
+}
+
+fn part2(map: &HashSet<Coord>) -> Result<i32> {
+    let start = Instant::now();
+
+    let visible = build_visible(map);
+
+    let (center, station_visible) = visible.into_iter().max_by_key(|(_, h)| h.len()).unwrap();
+
+    let mut station_visible: Vec<_> = station_visible.into_iter().collect();
+    station_visible.sort_by(|&c1, &c2| atan2(c1, center).partial_cmp(&atan2(c2, center)).unwrap());
+
+    let index = (station_visible
+        .iter()
+        .position(|&c| c.0 == center.0 && c.1 < center.1)
+        .unwrap()
+        + 199)
+        % station_visible.len();
+
+    let result = station_visible[index].0 * 100 + station_visible[index].1;
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn atan2(c1: Coord, c2: Coord) -> f64 {
+    ((c1.1 - c2.1) as f64).atan2((c1.0 - c2.0) as f64)
+}
+
+fn build_visible(map: &HashSet<Coord>) -> HashMap<Coord, HashSet<Coord>> {
+    let mut visited = HashSet::new();
+    let mut r: HashMap<Coord, HashSet<Coord>> = HashMap::new();
+    for &c1 in map {
         for &c2 in map {
-            if c1 == c2 {
+            if c1 == c2 || visited.contains(&c2) {
                 continue;
             }
             if visible(c1, c2, map) {
-                entry.push(c2);
+                r.entry(c1).or_default().insert(c2);
+                r.entry(c2).or_default().insert(c1);
             }
         }
+        visited.insert(c1);
     }
-    let result = dp.values().map(|v| v.len()).max().unwrap();
 
-    writeln!(io::stdout(), "Part 1: {result}")?;
-    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(result)
+    r
 }
 
 fn visible(c1: Coord, c2: Coord, map: &HashSet<Coord>) -> bool {
@@ -105,6 +141,29 @@ fn example_input() {
     ....#
     ...##";
     let map = parse_input(input);
-    println!("{:?}", map);
     assert_eq!(part1(&map).unwrap(), 8);
+
+    let input = ".#..##.###...#######
+    ##.############..##.
+    .#.######.########.#
+    .###.#######.####.#.
+    #####.##.#.##.###.##
+    ..#####..#.#########
+    ####################
+    #.####....###.#.#.##
+    ##.#################
+    #####.##.###..####..
+    ..######..##.#######
+    ####.##.####...##..#
+    .#####..#.######.###
+    ##...#.##########...
+    #.##########.#######
+    .####.#.###.###.#.##
+    ....##.##.###..#####
+    .#.#.###########.###
+    #.#.#.#####.####.###
+    ###.##.####.##.#..##";
+    let map = parse_input(input);
+    assert_eq!(part1(&map).unwrap(), 210);
+    assert_eq!(part2(&map).unwrap(), 802);
 }
