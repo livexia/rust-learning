@@ -9,7 +9,7 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Coord = i64;
+type Coord = i16;
 type Pos = (Coord, Coord, Coord);
 
 fn main() -> Result<()> {
@@ -22,22 +22,18 @@ fn main() -> Result<()> {
         .collect::<Result<Vec<Moon>>>()?;
 
     part1(moons.clone(), 1000)?;
-    part2(moons.clone())?;
+    part2(moons)?;
     Ok(())
 }
 
-fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<Coord> {
+fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<u64> {
     let start = Instant::now();
 
     let l = moons.len();
     for _ in 0..steps {
         for i in 0..l {
-            for j in 0..l {
-                if i == j {
-                    continue;
-                }
-                let pos = moons[j].pos;
-                moons[i].apply_gravity(pos);
+            for j in i + 1..l {
+                apply_gravity(&mut moons, i, j);
             }
         }
         moons.iter_mut().for_each(|m| m.apply_velocity());
@@ -49,7 +45,7 @@ fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<Coord> {
     Ok(result)
 }
 
-fn part2(mut moons: Vec<Moon>) -> Result<Coord> {
+fn part2(mut moons: Vec<Moon>) -> Result<u64> {
     let start = Instant::now();
 
     let init_moons = moons.clone();
@@ -57,17 +53,14 @@ fn part2(mut moons: Vec<Moon>) -> Result<Coord> {
     let mut result = 0;
     for step in 1.. {
         for i in 0..l {
-            for j in 0..l {
-                if i == j {
-                    continue;
-                }
-                let pos = moons[j].pos;
-                moons[i].apply_gravity(pos);
+            for j in i + 1..l {
+                apply_gravity(&mut moons, i, j);
             }
         }
         moons.iter_mut().for_each(|m| m.apply_velocity());
-        if init_moons.iter().zip(moons.iter()).all(|(m1, m2)| m1 == m2) {
+        if moons == init_moons {
             result = step;
+            println!("{}", step);
             break;
         }
         if step % 50000000 == 0 {
@@ -87,12 +80,6 @@ struct Moon {
 }
 
 impl Moon {
-    fn apply_gravity(&mut self, other: Pos) {
-        self.vel.0 += change_velocity(self.x(), other.0);
-        self.vel.1 += change_velocity(self.y(), other.1);
-        self.vel.2 += change_velocity(self.z(), other.2);
-    }
-
     fn apply_velocity(&mut self) {
         self.pos.0 += self.vel.0;
         self.pos.1 += self.vel.1;
@@ -111,17 +98,29 @@ impl Moon {
         self.pos.2
     }
 
-    fn pot(&self) -> Coord {
-        self.pos.0.abs() + self.pos.1.abs() + self.pos.2.abs()
+    fn pot(&self) -> u64 {
+        self.pos.0.abs() as u64 + self.pos.1.abs() as u64 + self.pos.2.abs() as u64
     }
 
-    fn kin(&self) -> Coord {
-        self.vel.0.abs() + self.vel.1.abs() + self.vel.2.abs()
+    fn kin(&self) -> u64 {
+        self.vel.0.abs() as u64 + self.vel.1.abs() as u64 + self.vel.2.abs() as u64
     }
 
-    fn total(&self) -> Coord {
+    fn total(&self) -> u64 {
         self.pot() * self.kin()
     }
+}
+
+fn apply_gravity(moons: &mut [Moon], a: usize, b: usize) {
+    let dx = change_velocity(moons[a].x(), moons[b].x());
+    let dy = change_velocity(moons[a].y(), moons[b].y());
+    let dz = change_velocity(moons[a].z(), moons[b].z());
+    moons[a].vel.0 += dx;
+    moons[a].vel.1 += dy;
+    moons[a].vel.2 += dz;
+    moons[b].vel.0 -= dx;
+    moons[b].vel.1 -= dy;
+    moons[b].vel.2 -= dz;
 }
 
 fn change_velocity(a: Coord, b: Coord) -> Coord {
