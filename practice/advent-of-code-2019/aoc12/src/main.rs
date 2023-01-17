@@ -48,29 +48,68 @@ fn part1(mut moons: Vec<Moon>, steps: usize) -> Result<u64> {
 fn part2(mut moons: Vec<Moon>) -> Result<u64> {
     let start = Instant::now();
 
-    let init_moons = moons.clone();
-    let l = moons.len();
-    let mut result = 0;
-    for step in 1.. {
-        for i in 0..l {
-            for j in i + 1..l {
-                apply_gravity(&mut moons, i, j);
-            }
-        }
-        moons.iter_mut().for_each(|m| m.apply_velocity());
-        if moons == init_moons {
-            result = step;
-            println!("{}", step);
-            break;
-        }
-        if step % 50000000 == 0 {
-            println!("{} {:?}", step, start.elapsed());
-        }
-    }
+    let step_x = find_step_for_one_axis(&mut moons, 0);
+    let step_y = find_step_for_one_axis(&mut moons, 1);
+    let step_z = find_step_for_one_axis(&mut moons, 2);
+
+    let result = lcm(lcm(step_x, step_y), step_z);
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
+}
+
+// https://www.reddit.com/r/adventofcode/comments/e9jxh2/comment/faje38l
+fn find_step_for_one_axis(moons: &mut [Moon], axis: u8) -> u64 {
+    fn get_pos(moons: &[Moon], axis: u8) -> Vec<Coord> {
+        moons
+            .iter()
+            .map(|m| match axis {
+                0 => m.x(),
+                1 => m.y(),
+                2 => m.z(),
+                _ => unreachable!(),
+            })
+            .collect()
+    }
+
+    fn get_vel(moons: &[Moon], axis: u8) -> Vec<Coord> {
+        moons
+            .iter()
+            .map(|m| match axis {
+                0 => m.vel.0,
+                1 => m.vel.1,
+                2 => m.vel.2,
+                _ => unreachable!(),
+            })
+            .collect()
+    }
+    let init_pos = get_pos(moons, axis);
+    let init_vel = get_vel(moons, axis);
+    let l = moons.len();
+    for step in 1.. {
+        for i in 0..l {
+            for j in i + 1..l {
+                apply_gravity_on_one_axis(moons, i, j, axis);
+            }
+        }
+        moons
+            .iter_mut()
+            .for_each(|m| m.apply_velocity_on_one_axis(axis));
+        if get_pos(moons, axis) == init_pos && get_vel(moons, axis) == init_vel {
+            return step;
+        }
+    }
+    0
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    let (a, b) = if a > b { (b, a) } else { (a, b) };
+    let mut r = b;
+    while r % a != 0 {
+        r += b;
+    }
+    r
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -84,6 +123,15 @@ impl Moon {
         self.pos.0 += self.vel.0;
         self.pos.1 += self.vel.1;
         self.pos.2 += self.vel.2;
+    }
+
+    fn apply_velocity_on_one_axis(&mut self, axis: u8) {
+        match axis {
+            0 => self.pos.0 += self.vel.0,
+            1 => self.pos.1 += self.vel.1,
+            2 => self.pos.2 += self.vel.2,
+            _ => unreachable!(),
+        }
     }
 
     fn x(&self) -> Coord {
@@ -108,6 +156,27 @@ impl Moon {
 
     fn total(&self) -> u64 {
         self.pot() * self.kin()
+    }
+}
+
+fn apply_gravity_on_one_axis(moons: &mut [Moon], a: usize, b: usize, axis: u8) {
+    match axis {
+        0 => {
+            let dx = change_velocity(moons[a].x(), moons[b].x());
+            moons[a].vel.0 += dx;
+            moons[b].vel.0 -= dx;
+        }
+        1 => {
+            let dy = change_velocity(moons[a].y(), moons[b].y());
+            moons[a].vel.1 += dy;
+            moons[b].vel.1 -= dy;
+        }
+        2 => {
+            let dz = change_velocity(moons[a].z(), moons[b].z());
+            moons[a].vel.2 += dz;
+            moons[b].vel.2 -= dz;
+        }
+        _ => unreachable!(),
     }
 }
 
