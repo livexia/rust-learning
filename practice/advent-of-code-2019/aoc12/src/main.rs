@@ -70,6 +70,9 @@ fn part2(mut moons: Vec<Moon>) -> Result<Coord> {
             result = step;
             break;
         }
+        if step % 50000000 == 0 {
+            println!("{} {:?}", step, start.elapsed());
+        }
     }
 
     writeln!(io::stdout(), "Part 2: {result}")?;
@@ -77,7 +80,7 @@ fn part2(mut moons: Vec<Moon>) -> Result<Coord> {
     Ok(result)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Moon {
     pos: Pos,
     vel: Pos,
