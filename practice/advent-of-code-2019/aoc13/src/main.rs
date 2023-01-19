@@ -27,10 +27,11 @@ fn main() -> Result<()> {
 fn part1(program: &[Int]) -> Result<usize> {
     let start = Instant::now();
 
-    let mut computer = Computer::new(program);
-    computer.run();
-    let draw = parse_output(&computer.output);
-    let result = draw.values().filter(|&&v| v == 2).count();
+    let mut arcade = Computer::new(program);
+    let mut grid = HashMap::new();
+    arcade.run();
+    update_grid(arcade.take_output(), &mut grid);
+    let result = grid.values().filter(|&&v| v == 2).count();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -39,24 +40,87 @@ fn part1(program: &[Int]) -> Result<usize> {
 
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
+    let mut arcade = Computer::new(program);
+    let mut grid = HashMap::new();
+    arcade.program[0] = 2;
+    let mut status = arcade.run();
+    let mut score = update_grid(arcade.take_output(), &mut grid);
+    println!("score: {score}");
+    println!("{}", draw(&grid));
+    let mut block_count = grid.values().filter(|&&v| v == 2).count();
+    while block_count != 0 {
+        if status == 3 {
+            arcade.add_input(0);
+            status = arcade.run();
+            score = update_grid(arcade.take_output(), &mut grid);
+            println!("score: {score}");
+            // println!("{}", draw(&grid));
+            block_count = grid.values().filter(|&&v| v == 2).count();
+            dbg!(block_count);
+        } else {
+            println!("arcade exit with code {status}");
+            break;
+        }
+    }
 
-    let output = todo!();
+    println!("remain block: {block_count}");
+
+    let output = 0;
 
     writeln!(io::stdout(), "Part 2: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
 }
 
-fn parse_output(output: &[Int]) -> HashMap<Coord, Int> {
-    let mut draw = HashMap::new();
+fn dfs(arcade: &mut Computer) -> Int {
+    todo!()
+}
+
+fn update_grid(output: Vec<Int>, grid: &mut HashMap<Coord, Int>) -> Int {
+    let mut score = 0;
     for instr in output.chunks(3) {
         let x = instr[0];
         let y = instr[1];
         let id = instr[2];
+        if x == -1 && y == 0 {
+            score = id;
+            println!("score: {score}");
+            continue;
+        }
         assert!([0, 1, 2, 3, 4].contains(&id));
-        draw.insert((x, y), id);
+        grid.insert((x, y), id);
     }
-    draw
+    score
+}
+
+fn draw(grid: &HashMap<Coord, Int>) -> String {
+    let mut s = String::new();
+    let (mut min_x, mut min_y) = (Int::MAX, Int::MAX);
+    let (mut max_x, mut max_y) = (Int::MIN, Int::MIN);
+    for &(x, y) in grid.keys() {
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+    }
+
+    for y in min_y..=max_y {
+        for x in min_x..=max_x {
+            if let Some(&id) = grid.get(&(x, y)) {
+                match id {
+                    1 => s.push('W'),
+                    2 => s.push('B'),
+                    3 => s.push('p'),
+                    4 => s.push('o'),
+                    _ => s.push(' '),
+                }
+            } else {
+                s.push(' ')
+            };
+        }
+        s.push('\n')
+    }
+    s
 }
 
 struct Computer {
@@ -81,6 +145,10 @@ impl Computer {
     fn add_input(&mut self, i: Int) {
         self.input.push(i);
         self.input.reverse();
+    }
+
+    fn take_output(&mut self) -> Vec<Int> {
+        self.output.drain(0..).collect()
     }
 
     fn run(&mut self) -> Int {
