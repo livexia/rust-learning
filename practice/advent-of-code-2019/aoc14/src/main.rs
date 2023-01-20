@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -26,7 +26,7 @@ fn part1(index: &Index, reactions: &[Option<Reaction>]) -> Result<usize> {
 
     let &ore_id = index.get("ORE").unwrap();
     let &fuel_id = index.get("FUEL").unwrap();
-    let count = reverse_dfs(reactions, fuel_id, ore_id, 1);
+    let count = reverse_search(reactions, fuel_id, ore_id, 1);
 
     writeln!(io::stdout(), "Part 1: {count}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -39,22 +39,22 @@ fn part2(index: &Index, reactions: &[Option<Reaction>]) -> Result<usize> {
     let &ore_id = index.get("ORE").unwrap();
     let &fuel_id = index.get("FUEL").unwrap();
 
-    let count = reverse_dfs(reactions, fuel_id, ore_id, 1);
+    let count = reverse_search(reactions, fuel_id, ore_id, 1);
     let mut left = 1000000000000 / count;
-    let mut right = left * 2;
+    let mut right = left + left;
 
-    // let right = match (left..right)
+    // let mut left = match (left..right)
     //     .collect::<Vec<_>>()
-    //     .binary_search_by(|&c| reverse_dfs(reactions, fuel_id, ore_id, c).cmp(&1000000000000))
+    //     .binary_search_by(|&c| reverse_search(reactions, fuel_id, ore_id, c).cmp(&1000000000000))
     // {
-    //     Ok(n) => left + n - 1,
-    //     Err(n) => left + n - 1,
+    //     Ok(n) => left + n,
+    //     Err(n) => left + n,
     // };
 
     // binary search https://doc.rust-lang.org/src/core/slice/mod.rs.html#2452
     while left < right {
         let mid = (left + right) / 2;
-        let count = reverse_dfs(reactions, fuel_id, ore_id, mid);
+        let count = reverse_search(reactions, fuel_id, ore_id, mid);
         match count.cmp(&1000000000000) {
             Ordering::Less => left = mid + 1,
             Ordering::Equal => break,
@@ -69,18 +69,19 @@ fn part2(index: &Index, reactions: &[Option<Reaction>]) -> Result<usize> {
     Ok(left)
 }
 
-fn reverse_dfs(
+fn reverse_search(
     reactions: &[Option<Reaction>],
     src: usize,
     dest: usize,
     fuel_count: usize,
 ) -> usize {
-    let mut queue = VecDeque::new();
-    queue.push_back((fuel_count, src));
+    // no need for VecDeque, Vec is fine for the problem, so this is not a bfs
+    let mut stack = Vec::new();
+    stack.push((fuel_count, src));
 
     let mut remain_chemical = vec![0; reactions.len()];
     let mut result = 0;
-    while let Some((count, cur)) = queue.pop_front() {
+    while let Some((count, cur)) = stack.pop() {
         if count <= remain_chemical[cur] {
             remain_chemical[cur] -= count;
             continue;
@@ -95,7 +96,7 @@ fn reverse_dfs(
             let times = (count + reaction.right.0 - 1) / reaction.right.0;
             remain_chemical[cur] += times * reaction.right.0 - count;
             for &(c, part) in &reaction.left {
-                queue.push_back((c * times, part));
+                stack.push((c * times, part));
             }
         } else {
             unreachable!()
@@ -123,9 +124,7 @@ fn parse_input(input: &str) -> Result<(Index, Vec<Option<Reaction>>)> {
                 .map(|p| parse_part(p.trim(), &mut index, &mut last_id))
                 .collect::<Result<Vec<_>>>()?;
             let right = parse_part(right.trim(), &mut index, &mut last_id)?;
-            for _ in reactions.len()..=right.1 {
-                reactions.push(None);
-            }
+            reactions.extend((reactions.len()..=right.1).map(|_| None));
             if reactions[right.1].is_some() {
                 return err!("two reaction produce one same chemical");
             }
