@@ -50,30 +50,19 @@ fn part2(program: &[Int]) -> Result<Int> {
     let mut block_count = grid.values().filter(|&&v| v == 2).count();
     while block_count != 0 {
         if status == 3 {
-            arcade.add_input(0);
+            arcade.add_input(1);
             status = arcade.run();
-            score = update_grid(arcade.take_output(), &mut grid);
-            println!("score: {score}");
-            // println!("{}", draw(&grid));
+            score = score.max(update_grid(arcade.take_output(), &mut grid));
             block_count = grid.values().filter(|&&v| v == 2).count();
-            dbg!(block_count);
         } else {
-            println!("arcade exit with code {status}");
+            writeln!(io::stdout(), "arcade exit with code {status}")?;
             break;
         }
     }
 
-    println!("remain block: {block_count}");
-
-    let output = 0;
-
-    writeln!(io::stdout(), "Part 2: {output}")?;
+    writeln!(io::stdout(), "Part 2: {score}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(output)
-}
-
-fn dfs(arcade: &mut Computer) -> Int {
-    todo!()
+    Ok(score)
 }
 
 fn update_grid(output: Vec<Int>, grid: &mut HashMap<Coord, Int>) -> Int {
@@ -84,9 +73,9 @@ fn update_grid(output: Vec<Int>, grid: &mut HashMap<Coord, Int>) -> Int {
         let id = instr[2];
         if x == -1 && y == 0 {
             score = id;
-            println!("score: {score}");
             continue;
         }
+        // println!("({}, {}) -> {}", x, y, id);
         assert!([0, 1, 2, 3, 4].contains(&id));
         grid.insert((x, y), id);
     }
