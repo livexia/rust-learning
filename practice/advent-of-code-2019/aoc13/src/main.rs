@@ -21,6 +21,7 @@ fn main() -> Result<()> {
 
     part1(&program)?;
     part2(&program)?;
+    part2_with_proper_solution(&program)?;
     Ok(())
 }
 
@@ -29,9 +30,10 @@ fn part1(program: &[Int]) -> Result<usize> {
 
     let mut arcade = Computer::new(program);
     let mut grid = HashMap::new();
+    let mut block_count = 0;
     arcade.run();
-    update_grid(arcade.take_output(), &mut grid);
-    let result = grid.values().filter(|&&v| v == 2).count();
+    update_grid(arcade.take_output(), &mut grid, &mut block_count);
+    let result = block_count;
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -40,20 +42,19 @@ fn part1(program: &[Int]) -> Result<usize> {
 
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
+
     let mut arcade = Computer::new(program);
     let mut grid = HashMap::new();
     arcade.program[0] = 2;
     let mut status = arcade.run();
-    let mut score = update_grid(arcade.take_output(), &mut grid);
-    println!("score: {score}");
-    println!("{}", draw(&grid));
-    let mut block_count = grid.values().filter(|&&v| v == 2).count();
+    let mut block_count = 0;
+
+    let (mut score, _, _) = update_grid(arcade.take_output(), &mut grid, &mut block_count);
     while block_count != 0 {
         if status == 3 {
             arcade.add_input(1);
             status = arcade.run();
-            score = score.max(update_grid(arcade.take_output(), &mut grid));
-            block_count = grid.values().filter(|&&v| v == 2).count();
+            score = score.max(update_grid(arcade.take_output(), &mut grid, &mut block_count).0);
         } else {
             writeln!(io::stdout(), "arcade exit with code {status}")?;
             break;
@@ -65,23 +66,69 @@ fn part2(program: &[Int]) -> Result<Int> {
     Ok(score)
 }
 
-fn update_grid(output: Vec<Int>, grid: &mut HashMap<Coord, Int>) -> Int {
+// play the game via https://www.reddit.com/r/adventofcode/comments/e9zgse/comment/fan8x27
+fn part2_with_proper_solution(program: &[Int]) -> Result<Int> {
+    let start = Instant::now();
+
+    let mut arcade = Computer::new(program);
+    let mut grid = HashMap::new();
+    arcade.program[0] = 2;
+    let mut status = arcade.run();
+    let mut block_count = 0;
+
+    let (mut score, mut ball_pos, mut paddle_pos) =
+        update_grid(arcade.take_output(), &mut grid, &mut block_count);
+    while block_count != 0 {
+        if status == 3 {
+            match ball_pos.0.cmp(&paddle_pos.0) {
+                std::cmp::Ordering::Less => arcade.add_input(-1),
+                std::cmp::Ordering::Equal => arcade.add_input(0),
+                std::cmp::Ordering::Greater => arcade.add_input(1),
+            }
+            status = arcade.run();
+            (score, ball_pos, paddle_pos) =
+                update_grid(arcade.take_output(), &mut grid, &mut block_count);
+        } else {
+            writeln!(io::stdout(), "arcade exit with code {status}")?;
+            break;
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {score}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(score)
+}
+
+fn update_grid(
+    output: Vec<Int>,
+    grid: &mut HashMap<Coord, Int>,
+    block_count: &mut usize,
+) -> (Int, Coord, Coord) {
     let mut score = 0;
+    let mut ball_pos = (0, 0);
+    let mut paddle_pos = (0, 0);
     for instr in output.chunks(3) {
-        let x = instr[0];
-        let y = instr[1];
-        let id = instr[2];
+        let (x, y, id) = (instr[0], instr[1], instr[2]);
         if x == -1 && y == 0 {
             score = id;
             continue;
         }
-        // println!("({}, {}) -> {}", x, y, id);
-        assert!([0, 1, 2, 3, 4].contains(&id));
-        grid.insert((x, y), id);
+        match id {
+            2 => *block_count += 1,
+            3 => paddle_pos = (x, y),
+            4 => ball_pos = (x, y),
+            _ => (),
+        }
+        if let Some(pre_id) = grid.insert((x, y), id) {
+            if id != 2 && pre_id == 2 {
+                *block_count -= 1;
+            }
+        }
     }
-    score
+    (score, ball_pos, paddle_pos)
 }
 
+#[allow(dead_code)]
 fn draw(grid: &HashMap<Coord, Int>) -> String {
     let mut s = String::new();
     let (mut min_x, mut min_y) = (Int::MAX, Int::MAX);
