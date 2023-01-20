@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let (index, reactions) = parse_input(&input)?;
 
     part1(&index, &reactions)?;
-    // part2()?;
+    part2(&index, &reactions)?;
     Ok(())
 }
 
@@ -25,37 +25,67 @@ fn part1(index: &Index, reactions: &[Option<Reaction>]) -> Result<usize> {
 
     let &ore_id = index.get("ORE").unwrap();
     let &fuel_id = index.get("FUEL").unwrap();
-    let count = reverse_dfs(reactions, fuel_id, ore_id, index.len());
+    let count = reverse_dfs(reactions, fuel_id, ore_id, &mut vec![0; index.len()]);
 
     writeln!(io::stdout(), "Part 1: {count}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(count)
 }
 
-fn reverse_dfs(reactions: &[Option<Reaction>], src: usize, dest: usize, length: usize) -> usize {
+fn part2(index: &Index, reactions: &[Option<Reaction>]) -> Result<usize> {
+    let start = Instant::now();
+
+    let &ore_id = index.get("ORE").unwrap();
+    let &fuel_id = index.get("FUEL").unwrap();
+
+    let mut remain_chemical = vec![0; index.len()];
+    let count = reverse_dfs(reactions, fuel_id, ore_id, &mut remain_chemical);
+    let mut times = 1000000000000 / count;
+    for item in remain_chemical.iter_mut() {
+        *item *= times;
+    }
+    let mut remain_ore = 1000000000000 - times * count;
+    dbg!(remain_ore);
+    loop {
+        let count = reverse_dfs(reactions, fuel_id, ore_id, &mut remain_chemical);
+        if remain_ore < count {
+            break;
+        }
+        remain_ore -= count;
+        times += 1;
+    }
+    dbg!(remain_chemical);
+    dbg!(index);
+
+    writeln!(io::stdout(), "Part 2: {times}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(times)
+}
+
+fn reverse_dfs(
+    reactions: &[Option<Reaction>],
+    src: usize,
+    dest: usize,
+    remain_chemical: &mut [usize],
+) -> usize {
     let mut queue = VecDeque::new();
     queue.push_back((1, src));
 
-    let mut remain_chemial = vec![0; length];
     let mut result = 0;
     while let Some((count, cur)) = queue.pop_front() {
-        if count <= remain_chemial[cur] {
-            remain_chemial[cur] -= count;
+        if count <= remain_chemical[cur] {
+            remain_chemical[cur] -= count;
             continue;
         }
-        let count = count - remain_chemial[cur];
-        remain_chemial[cur] = 0;
+        let count = count - remain_chemical[cur];
+        remain_chemical[cur] = 0;
         if cur == dest {
             result += count;
             continue;
         }
         if let Some(reaction) = &reactions[cur] {
-            let times = if reaction.right.0 >= count {
-                1
-            } else {
-                (count + reaction.right.0 - 1) / reaction.right.0
-            };
-            remain_chemial[cur] = times * reaction.right.0 - count;
+            let times = (count + reaction.right.0 - 1) / reaction.right.0;
+            remain_chemical[cur] += times * reaction.right.0 - count;
             for &(c, part) in &reaction.left {
                 queue.push_back((c * times, part));
             }
@@ -148,6 +178,7 @@ fn example_input() {
 
     let (index, reactions) = parse_input(input).unwrap();
     assert_eq!(part1(&index, &reactions).unwrap(), 13312);
+    assert_eq!(part2(&index, &reactions).unwrap(), 82892753);
 
     let input = "2 VPVL, 7 FWMGM, 2 CXFTF, 11 MNCFX => 1 STKFG
     17 NVRVD, 3 JNWZP => 8 VPVL
@@ -164,6 +195,7 @@ fn example_input() {
 
     let (index, reactions) = parse_input(input).unwrap();
     assert_eq!(part1(&index, &reactions).unwrap(), 180697);
+    assert_eq!(part2(&index, &reactions).unwrap(), 5586022);
 
     let input = "171 ORE => 8 CNZTR
     7 ZLQW, 3 BMBT, 9 XCVML, 26 XMNCP, 1 WPTQ, 2 MZWV, 1 RJRHP => 4 PLWSL
@@ -185,4 +217,5 @@ fn example_input() {
 
     let (index, reactions) = parse_input(input).unwrap();
     assert_eq!(part1(&index, &reactions).unwrap(), 2210736);
+    assert_eq!(part2(&index, &reactions).unwrap(), 460664);
 }
