@@ -8,6 +8,7 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
+type Index<'a> = HashMap<&'a str, usize>;
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -19,25 +20,31 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(index: &HashMap<&str, usize>, reactions: &[Option<Reaction>]) -> Result<usize> {
+fn part1(index: &Index, reactions: &[Option<Reaction>]) -> Result<usize> {
     let start = Instant::now();
 
     let &ore_id = index.get("ORE").unwrap();
     let &fuel_id = index.get("FUEL").unwrap();
-    dbg!(ore_id, fuel_id);
-    println!("{:?}", reactions);
-    let count = reverse_dfs(reactions, fuel_id, ore_id)?;
+    let count = reverse_dfs(reactions, fuel_id, ore_id, index.len());
 
     writeln!(io::stdout(), "Part 1: {count}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(count)
 }
 
-fn reverse_dfs(reactions: &[Option<Reaction>], src: usize, dest: usize) -> Result<usize> {
+fn reverse_dfs(reactions: &[Option<Reaction>], src: usize, dest: usize, length: usize) -> usize {
     let mut queue = VecDeque::new();
     queue.push_back((1, src));
+
+    let mut remain_chemial = vec![0; length];
     let mut result = 0;
     while let Some((count, cur)) = queue.pop_front() {
+        if count <= remain_chemial[cur] {
+            remain_chemial[cur] -= count;
+            continue;
+        }
+        let count = count - remain_chemial[cur];
+        remain_chemial[cur] = 0;
         if cur == dest {
             result += count;
             continue;
@@ -48,14 +55,15 @@ fn reverse_dfs(reactions: &[Option<Reaction>], src: usize, dest: usize) -> Resul
             } else {
                 (count + reaction.right.0 - 1) / reaction.right.0
             };
+            remain_chemial[cur] = times * reaction.right.0 - count;
             for &(c, part) in &reaction.left {
                 queue.push_back((c * times, part));
             }
         } else {
-            return err!("can not produce form {dest} to {src}");
+            unreachable!()
         }
     }
-    Ok(result)
+    result
 }
 
 #[derive(Debug)]
@@ -64,23 +72,7 @@ struct Reaction {
     right: (usize, usize),
 }
 
-impl Reaction {
-    fn can_perform(&self, remain_chemicals: &[usize]) -> usize {
-        let mut count = usize::MAX;
-
-        for &(c, id) in &self.left {
-            count = count.min(remain_chemicals[id] / c)
-        }
-
-        if count == usize::MAX {
-            0
-        } else {
-            count
-        }
-    }
-}
-
-fn parse_input(input: &str) -> Result<(HashMap<&str, usize>, Vec<Option<Reaction>>)> {
+fn parse_input(input: &str) -> Result<(Index, Vec<Option<Reaction>>)> {
     let mut index = HashMap::new();
     let mut last_id = 0;
 
@@ -110,7 +102,7 @@ fn parse_input(input: &str) -> Result<(HashMap<&str, usize>, Vec<Option<Reaction
 
 fn parse_part<'a>(
     part: &'a str,
-    index: &mut HashMap<&'a str, usize>,
+    index: &mut Index<'a>,
     last_id: &mut usize,
 ) -> Result<(usize, usize)> {
     if let Some((count, chemical)) = part.split_once(' ') {
@@ -118,10 +110,10 @@ fn parse_part<'a>(
         let chemical = get_id(index, chemical.trim(), last_id);
         return Ok((count, chemical));
     }
-    return err!("not a valid part for chemical: {part}");
+    err!("not a valid part for chemical: {part}")
 }
 
-fn get_id<'a>(index: &mut HashMap<&'a str, usize>, name: &'a str, last_id: &mut usize) -> usize {
+fn get_id<'a>(index: &mut Index<'a>, name: &'a str, last_id: &mut usize) -> usize {
     if let Some(id) = index.get(&name) {
         *id
     } else {
