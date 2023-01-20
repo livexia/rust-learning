@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::io::{self, Read, Write};
@@ -41,31 +42,31 @@ fn part2(index: &Index, reactions: &[Option<Reaction>]) -> Result<usize> {
     let count = reverse_dfs(reactions, fuel_id, ore_id, 1);
     let mut left = 1000000000000 / count;
     let mut right = left * 2;
-    let right = match (left..right)
-        .collect::<Vec<_>>()
-        .binary_search_by_key(&1000000000000, |&c| {
-            reverse_dfs(reactions, fuel_id, ore_id, c)
-        }) {
-        Ok(n) => left + n - 1,
-        Err(n) => left + n - 1,
-    };
-    dbg!(right);
-    // while left < right {
-    //     let mid = (left + right) / 2;
-    //     let count = reverse_dfs(reactions, fuel_id, ore_id, mid);
-    //     dbg!(count, mid, left, right);
-    //     if count < 1000000000000 {
-    //         left = mid;
-    //     } else if count > 1000000000000 {
-    //         right = mid - 1;
-    //     } else {
-    //         break;
-    //     }
-    // }
 
-    writeln!(io::stdout(), "Part 2: {right}")?;
+    // let right = match (left..right)
+    //     .collect::<Vec<_>>()
+    //     .binary_search_by(|&c| reverse_dfs(reactions, fuel_id, ore_id, c).cmp(&1000000000000))
+    // {
+    //     Ok(n) => left + n - 1,
+    //     Err(n) => left + n - 1,
+    // };
+
+    // binary search https://doc.rust-lang.org/src/core/slice/mod.rs.html#2452
+    while left < right {
+        let mid = (left + right) / 2;
+        let count = reverse_dfs(reactions, fuel_id, ore_id, mid);
+        match count.cmp(&1000000000000) {
+            Ordering::Less => left = mid + 1,
+            Ordering::Equal => break,
+            Ordering::Greater => right = mid,
+        }
+    }
+
+    left -= 1;
+
+    writeln!(io::stdout(), "Part 2: {left}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(right)
+    Ok(left)
 }
 
 fn reverse_dfs(
@@ -185,7 +186,7 @@ fn example_input() {
 
     let (index, reactions) = parse_input(input).unwrap();
     assert_eq!(part1(&index, &reactions).unwrap(), 13312);
-    // assert_eq!(part2(&index, &reactions).unwrap(), 82892753);
+    assert_eq!(part2(&index, &reactions).unwrap(), 82892753);
 
     let input = "2 VPVL, 7 FWMGM, 2 CXFTF, 11 MNCFX => 1 STKFG
     17 NVRVD, 3 JNWZP => 8 VPVL
@@ -202,7 +203,7 @@ fn example_input() {
 
     let (index, reactions) = parse_input(input).unwrap();
     assert_eq!(part1(&index, &reactions).unwrap(), 180697);
-    // assert_eq!(part2(&index, &reactions).unwrap(), 5586022);
+    assert_eq!(part2(&index, &reactions).unwrap(), 5586022);
 
     let input = "171 ORE => 8 CNZTR
     7 ZLQW, 3 BMBT, 9 XCVML, 26 XMNCP, 1 WPTQ, 2 MZWV, 1 RJRHP => 4 PLWSL
