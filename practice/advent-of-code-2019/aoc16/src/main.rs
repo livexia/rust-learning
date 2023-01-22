@@ -7,9 +7,10 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
+type Int = i16;
 
 #[allow(dead_code)]
-const BASE: [i32; 4] = [0, 1, 0, -1];
+const BASE: [Int; 4] = [0, 1, 0, -1];
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -45,35 +46,45 @@ fn part2(input: &str) -> Result<String> {
 fn get_eight_digit_message(input: &str, phase_count: usize, offset: usize) -> Result<String> {
     let mut input = str_to_int(input);
     for _ in 0..phase_count {
-        input = fft(&input);
+        let start = Instant::now();
+        fft(&mut input);
+        println!(
+            "{} {:?}",
+            int_to_str(&input[offset..offset + 8]).unwrap(),
+            start.elapsed()
+        );
     }
     int_to_str(&input[offset..offset + 8])
 }
 
-fn fft(input: &[i32]) -> Vec<i32> {
-    let mut v = vec![];
+fn fft(input: &mut [Int]) {
     for i in 0..input.len() {
-        v.push(ones_digit(
+        input[i] = ones_digit(
             input[i..]
                 .chunks(i + 1)
-                .map(|it| it.iter().sum::<i32>())
                 .step_by(2)
+                .map(|it| it.iter().sum())
                 .enumerate()
-                .fold(0, |sum, (i, w)| if i % 2 == 0 { sum + w } else { sum - w }),
-        ));
+                .fold(0, |sum, (i, w)| {
+                    if i % 2 == 0 {
+                        sum.saturating_add(w)
+                    } else {
+                        sum.saturating_sub(w)
+                    }
+                }),
+        );
     }
-    v
 }
 
-fn ones_digit(n: i32) -> i32 {
-    n.abs() % 10
+fn ones_digit(n: Int) -> Int {
+    (n % 10).abs()
 }
 
-fn str_to_int(s: &str) -> Vec<i32> {
-    s.bytes().map(|b| (b - b'0') as i32).collect()
+fn str_to_int(s: &str) -> Vec<Int> {
+    s.bytes().map(|b| (b - b'0') as Int).collect()
 }
 
-fn int_to_str(v: &[i32]) -> Result<String> {
+fn int_to_str(v: &[Int]) -> Result<String> {
     let mut s = String::new();
     for &n in v {
         if n == 0 && s.is_empty() {
@@ -90,6 +101,7 @@ fn int_to_str(v: &[i32]) -> Result<String> {
 
 #[test]
 fn example_input() {
+    println!("{}", -128i8 % 10);
     assert_eq!(ones_digit(-17), 7);
     assert_eq!(ones_digit(38), 8);
 
