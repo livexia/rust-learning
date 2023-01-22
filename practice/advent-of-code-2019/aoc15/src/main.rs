@@ -19,64 +19,95 @@ fn main() -> Result<()> {
     io::stdin().read_to_string(&mut input)?;
     let program = parse_input(&input)?;
 
-    part1(&program)?;
-    part2(&program)?;
+    let (_, grid, oxygen) = part1(&program)?;
+    part2(grid, oxygen)?;
     Ok(())
 }
 
-fn part1(program: &[Int]) -> Result<usize> {
-    let start = Instant::now();
-
-    let mut computer = Computer::new(program);
-    let (result, _) = droid_bfs(&mut computer, &mut HashMap::new(), 1);
-
-    writeln!(io::stdout(), "Part 1: {result}")?;
-    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(result)
-}
-
-fn part2(program: &[Int]) -> Result<usize> {
+fn part1(program: &[Int]) -> Result<(usize, HashMap<Coord, Int>, Coord)> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
     let mut grid = HashMap::new();
-    grid.insert((0, 0), 1);
-    let (_, oxygen) = droid_bfs(&mut computer, &mut grid, 2);
+    dfs_build_grid(&mut computer, &mut grid, (0, 0), &mut HashSet::new());
+    let (result, oxygen) = bfs(&grid, (0, 0), 1);
 
-    let result = oxygen_bfs(&mut grid, oxygen);
+    writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok((result, grid, oxygen))
+}
+
+fn part2(grid: HashMap<Coord, Int>, oxygen: Coord) -> Result<usize> {
+    let start = Instant::now();
+
+    let result = bfs(&grid, oxygen, 2).0 - 1;
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn droid_bfs(computer: &mut Computer, grid: &mut HashMap<Coord, Int>, part: u8) -> (usize, Coord) {
+fn dfs_build_grid(
+    computer: &mut Computer,
+    grid: &mut HashMap<Coord, Int>,
+    coord: Coord,
+    visited: &mut HashSet<Coord>,
+) {
+    for input in 1..5 {
+        let next = move_droid(coord, input);
+        if visited.insert(next) {
+            if let Some(output) = run_computer_with_input(computer, input) {
+                grid.insert(next, output);
+                if output != 0 {
+                    dfs_build_grid(computer, grid, next, visited);
+                    // backtrack
+                    run_computer_with_input(computer, reverse_dir(input));
+                }
+            }
+        }
+    }
+}
+
+fn reverse_dir(dir: Int) -> Int {
+    match dir {
+        1 => 2,
+        2 => 1,
+        3 => 4,
+        4 => 3,
+        _ => unreachable!(),
+    }
+}
+
+fn run_computer_with_input(computer: &mut Computer, input: Int) -> Option<Int> {
+    computer.add_input(input);
+    if computer.run() == 4 {
+        return computer.get_output().pop();
+    }
+    None
+}
+
+fn bfs(grid: &HashMap<Coord, Int>, coord: Coord, part: u8) -> (usize, Coord) {
     let mut queue = VecDeque::new();
-    queue.push_back(((0, 0), computer.clone()));
+    queue.push_back(coord);
+
     let mut visited = HashSet::new();
+    visited.insert(coord);
+
     let mut depth = 0;
     let mut oxygen = (0, 0);
     while !queue.is_empty() {
         let length = queue.len();
         depth += 1;
         for _ in 0..length {
-            let (cur, computer) = queue.pop_front().unwrap();
-            if visited.insert(cur) {
-                for input in 1..5 {
-                    let mut c = computer.clone();
-                    c.add_input(input);
-                    if c.run() == 4 {
-                        if let Some(&output) = c.get_output().last() {
-                            let next = move_droid(cur, input);
-                            if output == 2 {
-                                oxygen = next;
-                                if part == 1 {
-                                    return (depth, oxygen);
-                                }
-                            }
-                            if output != 0 {
-                                queue.push_back((next, c.clone()));
-                            }
-                            grid.insert(next, output);
+            let cur = queue.pop_front().unwrap();
+            for input in 1..5 {
+                let next = move_droid(cur, input);
+                if let Some(&status) = grid.get(&next) {
+                    if status == 1 && visited.insert(next) {
+                        queue.push_back(next);
+                    } else if status == 2 {
+                        oxygen = next;
+                        if part == 1 {
+                            return (depth, oxygen);
                         }
                     }
                 }
@@ -85,30 +116,6 @@ fn droid_bfs(computer: &mut Computer, grid: &mut HashMap<Coord, Int>, part: u8) 
     }
 
     (depth, oxygen)
-}
-
-fn oxygen_bfs(grid: &mut HashMap<Coord, Int>, coord: Coord) -> usize {
-    let mut queue = VecDeque::new();
-    queue.push_back(coord);
-    let mut visited = HashSet::new();
-    let mut depth = 0;
-    while !queue.is_empty() {
-        let length = queue.len();
-        for _ in 0..length {
-            let cur = queue.pop_front().unwrap();
-            if visited.insert(cur) {
-                for input in 1..5 {
-                    let next = move_droid(cur, input);
-                    if grid.get(&next) == Some(&1) {
-                        grid.insert(next, 2);
-                        queue.push_back(next);
-                    }
-                }
-            }
-        }
-        depth += 1;
-    }
-    depth - 1
 }
 
 #[allow(dead_code)]
@@ -167,8 +174,8 @@ impl Computer {
         }
     }
 
-    fn add_input(&mut self, i: Int) {
-        self.input.push(i);
+    fn add_input(&mut self, input: Int) {
+        self.input.push(input);
         self.input.reverse();
     }
 
