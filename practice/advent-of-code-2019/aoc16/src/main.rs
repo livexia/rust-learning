@@ -45,7 +45,11 @@ fn part2(input: &str) -> Result<String> {
 
 fn get_eight_digit_message(input: &str, phase_count: usize, offset: usize) -> Result<String> {
     let mut input = str_to_int(input);
-    if offset * 3 > input.len() {
+    if offset * 2 + 1 > input.len() {
+        for _ in 0..phase_count {
+            more_simplify_fft(&mut input, offset);
+        }
+    } else if offset * 3 + 2 > input.len() {
         // start from offset, only pattern with 1 will apply
         let mut sum = input[offset..(offset * 2 + 1).min(input.len())]
             .iter()
@@ -62,7 +66,8 @@ fn get_eight_digit_message(input: &str, phase_count: usize, offset: usize) -> Re
 }
 
 fn fft(input: &mut [Int], offset: usize) {
-    for i in offset..input.len() {
+    let mut i = offset;
+    while i < input.len() {
         input[i] = ones_digit(
             input[i..]
                 .chunks(i + 1)
@@ -71,12 +76,13 @@ fn fft(input: &mut [Int], offset: usize) {
                 .map(|(it, i)| i * it.iter().sum::<Int>())
                 .sum::<Int>(),
         );
+        i += 1;
     }
 }
 
 fn simplify_fft(input: &mut [Int], offset: usize, mut cur_sum: Int) -> Int {
-    if input.len() > offset * 3 - 1 {
-        unimplemented!("unimplemented simply fft for input length big than offset * 3 - 1")
+    if input.len() > offset * 3 + 2 {
+        unimplemented!("unimplemented simply fft for input length big than offset * 3 + 2")
     }
     let length = (2 * offset + 1).min(input.len());
 
@@ -98,6 +104,20 @@ fn simplify_fft(input: &mut [Int], offset: usize, mut cur_sum: Int) -> Int {
         i += 1;
     }
     next_sum
+}
+
+fn more_simplify_fft(input: &mut [Int], offset: usize) {
+    if input.len() > offset * 2 + 1 {
+        unimplemented!("unimplemented simply fft for input length big than offset * 2 - 1")
+    }
+
+    let mut i = input.len() - 1;
+    let mut sum = 0;
+    while i + 1 > offset {
+        sum += input[i];
+        input[i] = ones_digit(sum);
+        i -= 1;
+    }
 }
 
 fn ones_digit(n: Int) -> Int {
