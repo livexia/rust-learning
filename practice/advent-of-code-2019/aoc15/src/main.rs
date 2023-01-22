@@ -12,6 +12,7 @@ macro_rules! err {
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
 type Int = i128;
 type Addr = usize;
+type Coord = (i32, i32);
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -27,7 +28,7 @@ fn part1(program: &[Int]) -> Result<usize> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
-    let result = bfs(&mut computer)?;
+    let (result, _) = droid_bfs(&mut computer, &mut HashSet::new(), 1);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -38,34 +39,44 @@ fn part2(program: &[Int]) -> Result<usize> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
-    let result = bfs(&mut computer)?;
+    let mut grid = HashSet::new();
+    let (_, oxygen) = droid_bfs(&mut computer, &mut grid, 2);
 
+    let result = oxygen_bfs(&grid, oxygen);
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn bfs(computer: &mut Computer) -> Result<usize> {
+fn droid_bfs(computer: &mut Computer, grid: &mut HashSet<Coord>, part: u8) -> (usize, Coord) {
     let mut queue = VecDeque::new();
     queue.push_back(((0, 0), computer.clone()));
     let mut visited = HashSet::new();
     let mut depth = 1;
+    let mut oxygen = (0, 0);
     while !queue.is_empty() {
         let length = queue.len();
         for _ in 0..length {
             let (cur, computer) = queue.pop_front().unwrap();
             if visited.insert(cur) {
+                grid.insert(cur);
                 for input in 1..5 {
                     let mut c = computer.clone();
                     c.add_input(input);
                     if c.run() == 4 {
                         if let Some(&output) = c.get_output().last() {
+                            let next = move_droid(cur, input);
                             if output == 2 {
-                                return Ok(depth);
+                                oxygen = next;
+                                if part == 1 {
+                                    return (depth, oxygen);
+                                } else {
+                                    queue.push_back((next, c.clone()))
+                                }
                             } else if output == 0 {
                                 continue;
                             } else {
-                                queue.push_back((move_droid(cur, input), c.clone()))
+                                queue.push_back((next, c.clone()))
                             }
                         }
                     }
@@ -75,11 +86,34 @@ fn bfs(computer: &mut Computer) -> Result<usize> {
         depth += 1;
     }
 
-    err!("can not move the repair droid to the location of the oxygen system")
+    (depth, oxygen)
 }
 
-fn move_droid(pos: (i32, i32), input: Int) -> (i32, i32) {
-    let (x, y) = pos;
+fn oxygen_bfs(grid: &HashSet<Coord>, coord: Coord) -> usize {
+    let mut queue = VecDeque::new();
+    queue.push_back(coord);
+    let mut visited = HashSet::new();
+    let mut depth = 0;
+    while !queue.is_empty() {
+        let length = queue.len();
+        for _ in 0..length {
+            let cur = queue.pop_front().unwrap();
+            if visited.insert(cur) {
+                for input in 1..5 {
+                    let next = move_droid(cur, input);
+                    if grid.contains(&next) {
+                        queue.push_back(next);
+                    }
+                }
+            }
+        }
+        depth += 1;
+    }
+    depth
+}
+
+fn move_droid(coord: Coord, input: Int) -> Coord {
+    let (x, y) = coord;
     match input {
         1 => (x - 1, y),
         2 => (x + 1, y),
