@@ -7,7 +7,7 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Int = i16;
+type Int = i32;
 
 #[allow(dead_code)]
 const BASE: [Int; 4] = [0, 1, 0, -1];
@@ -34,8 +34,8 @@ fn part1(input: &str, phase_count: usize) -> Result<String> {
 fn part2(input: &str) -> Result<String> {
     let start = Instant::now();
 
-    let input = input.repeat(10000);
     let offset = input.chars().take(7).collect::<String>().parse()?;
+    let input = input.repeat(10000);
     let result = get_eight_digit_message(&input, 100, offset)?;
 
     writeln!(io::stdout(), "Part 2: {result}")?;
@@ -45,33 +45,23 @@ fn part2(input: &str) -> Result<String> {
 
 fn get_eight_digit_message(input: &str, phase_count: usize, offset: usize) -> Result<String> {
     let mut input = str_to_int(input);
-    for _ in 0..phase_count {
+    for i in 0..phase_count {
         let start = Instant::now();
-        fft(&mut input);
-        println!(
-            "{} {:?}",
-            int_to_str(&input[offset..offset + 8]).unwrap(),
-            start.elapsed()
-        );
+        fft(&mut input, offset);
+        println!("{}: {:?}", i, start.elapsed());
     }
     int_to_str(&input[offset..offset + 8])
 }
 
-fn fft(input: &mut [Int]) {
-    for i in 0..input.len() {
+fn fft(input: &mut [Int], offset: usize) {
+    for i in offset..input.len() {
         input[i] = ones_digit(
             input[i..]
                 .chunks(i + 1)
                 .step_by(2)
-                .map(|it| it.iter().sum())
-                .enumerate()
-                .fold(0, |sum, (i, w)| {
-                    if i % 2 == 0 {
-                        sum.saturating_add(w)
-                    } else {
-                        sum.saturating_sub(w)
-                    }
-                }),
+                .zip((-1..=1).step_by(2).cycle())
+                .map(|(it, i)| i * it.iter().sum::<Int>())
+                .sum::<Int>(),
         );
     }
 }
@@ -101,7 +91,6 @@ fn int_to_str(v: &[Int]) -> Result<String> {
 
 #[test]
 fn example_input() {
-    println!("{}", -128i8 % 10);
     assert_eq!(ones_digit(-17), 7);
     assert_eq!(ones_digit(38), 8);
 
