@@ -45,10 +45,18 @@ fn part2(input: &str) -> Result<String> {
 
 fn get_eight_digit_message(input: &str, phase_count: usize, offset: usize) -> Result<String> {
     let mut input = str_to_int(input);
-    for i in 0..phase_count {
-        let start = Instant::now();
-        fft(&mut input, offset);
-        println!("{}: {:?}", i, start.elapsed());
+    if offset * 3 > input.len() {
+        // start from offset, only pattern with 1 will apply
+        let mut sum = input[offset..(offset * 2 + 1).min(input.len())]
+            .iter()
+            .sum();
+        for _ in 0..phase_count {
+            sum = simplify_fft(&mut input, offset, sum);
+        }
+    } else {
+        for _ in 0..phase_count {
+            fft(&mut input, offset);
+        }
     }
     int_to_str(&input[offset..offset + 8])
 }
@@ -64,6 +72,32 @@ fn fft(input: &mut [Int], offset: usize) {
                 .sum::<Int>(),
         );
     }
+}
+
+fn simplify_fft(input: &mut [Int], offset: usize, mut cur_sum: Int) -> Int {
+    if input.len() > offset * 3 - 1 {
+        unimplemented!("unimplemented simply fft for input length big than offset * 3 - 1")
+    }
+    let length = (2 * offset + 1).min(input.len());
+
+    let mut i = offset;
+    let mut temp = input[i];
+    input[i] = ones_digit(cur_sum);
+    let mut next_sum = input[i];
+    while i + 1 < length {
+        cur_sum -= temp;
+        if i + offset + 1 < length {
+            cur_sum += input[i + offset + 1];
+            if i + offset + 2 < length {
+                cur_sum += input[i + offset + 2]
+            }
+        }
+        temp = input[i + 1];
+        input[i + 1] = ones_digit(cur_sum);
+        next_sum += input[i + 1];
+        i += 1;
+    }
+    next_sum
 }
 
 fn ones_digit(n: Int) -> Int {
