@@ -29,7 +29,7 @@ fn part1(program: &[Int]) -> Result<(usize, HashMap<Coord, Int>, Coord)> {
 
     let mut computer = Computer::new(program);
     let mut grid = HashMap::new();
-    dfs_build_grid(&mut computer, &mut grid, (0, 0), &mut HashSet::new());
+    dfs_build_grid(&mut computer, &mut grid, (0, 0));
     let (result, oxygen) = bfs(&grid, (0, 0), 1);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
@@ -46,19 +46,14 @@ fn part2(grid: HashMap<Coord, Int>, oxygen: Coord) -> Result<usize> {
     Ok(result)
 }
 
-fn dfs_build_grid(
-    computer: &mut Computer,
-    grid: &mut HashMap<Coord, Int>,
-    coord: Coord,
-    visited: &mut HashSet<Coord>,
-) {
+fn dfs_build_grid(computer: &mut Computer, grid: &mut HashMap<Coord, Int>, coord: Coord) {
     for input in 1..5 {
         let next = move_droid(coord, input);
-        if visited.insert(next) {
+        if !grid.contains_key(&next) {
             if let Some(output) = run_computer_with_input(computer, input) {
                 grid.insert(next, output);
                 if output != 0 {
-                    dfs_build_grid(computer, grid, next, visited);
+                    dfs_build_grid(computer, grid, next);
                     // backtrack
                     run_computer_with_input(computer, reverse_dir(input));
                 }
