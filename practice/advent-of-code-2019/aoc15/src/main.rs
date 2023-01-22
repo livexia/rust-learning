@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
@@ -28,7 +28,7 @@ fn part1(program: &[Int]) -> Result<usize> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
-    let (result, _) = droid_bfs(&mut computer, &mut HashSet::new(), 1);
+    let (result, _) = droid_bfs(&mut computer, &mut HashMap::new(), 1);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -39,27 +39,28 @@ fn part2(program: &[Int]) -> Result<usize> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
-    let mut grid = HashSet::new();
+    let mut grid = HashMap::new();
+    grid.insert((0, 0), 1);
     let (_, oxygen) = droid_bfs(&mut computer, &mut grid, 2);
 
-    let result = oxygen_bfs(&grid, oxygen);
+    let result = oxygen_bfs(&mut grid, oxygen);
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn droid_bfs(computer: &mut Computer, grid: &mut HashSet<Coord>, part: u8) -> (usize, Coord) {
+fn droid_bfs(computer: &mut Computer, grid: &mut HashMap<Coord, Int>, part: u8) -> (usize, Coord) {
     let mut queue = VecDeque::new();
     queue.push_back(((0, 0), computer.clone()));
     let mut visited = HashSet::new();
-    let mut depth = 1;
+    let mut depth = 0;
     let mut oxygen = (0, 0);
     while !queue.is_empty() {
         let length = queue.len();
+        depth += 1;
         for _ in 0..length {
             let (cur, computer) = queue.pop_front().unwrap();
             if visited.insert(cur) {
-                grid.insert(cur);
                 for input in 1..5 {
                     let mut c = computer.clone();
                     c.add_input(input);
@@ -70,26 +71,23 @@ fn droid_bfs(computer: &mut Computer, grid: &mut HashSet<Coord>, part: u8) -> (u
                                 oxygen = next;
                                 if part == 1 {
                                     return (depth, oxygen);
-                                } else {
-                                    queue.push_back((next, c.clone()))
                                 }
-                            } else if output == 0 {
-                                continue;
-                            } else {
-                                queue.push_back((next, c.clone()))
                             }
+                            if output != 0 {
+                                queue.push_back((next, c.clone()));
+                            }
+                            grid.insert(next, output);
                         }
                     }
                 }
             }
         }
-        depth += 1;
     }
 
     (depth, oxygen)
 }
 
-fn oxygen_bfs(grid: &HashSet<Coord>, coord: Coord) -> usize {
+fn oxygen_bfs(grid: &mut HashMap<Coord, Int>, coord: Coord) -> usize {
     let mut queue = VecDeque::new();
     queue.push_back(coord);
     let mut visited = HashSet::new();
@@ -101,7 +99,8 @@ fn oxygen_bfs(grid: &HashSet<Coord>, coord: Coord) -> usize {
             if visited.insert(cur) {
                 for input in 1..5 {
                     let next = move_droid(cur, input);
-                    if grid.contains(&next) {
+                    if grid.get(&next) == Some(&1) {
+                        grid.insert(next, 2);
                         queue.push_back(next);
                     }
                 }
@@ -109,7 +108,32 @@ fn oxygen_bfs(grid: &HashSet<Coord>, coord: Coord) -> usize {
         }
         depth += 1;
     }
-    depth
+    depth - 1
+}
+
+#[allow(dead_code)]
+fn draw(grid: &HashMap<Coord, Int>) -> String {
+    let &min_x = grid.keys().map(|(x, _)| x).min().unwrap();
+    let &min_y = grid.keys().map(|(_, y)| y).min().unwrap();
+    let &max_x = grid.keys().map(|(x, _)| x).max().unwrap();
+    let &max_y = grid.keys().map(|(_, y)| y).max().unwrap();
+    let mut s = String::new();
+    for x in min_x..=max_x {
+        for y in min_y..=max_y {
+            if let Some(status) = grid.get(&(x, y)) {
+                match *status {
+                    0 => s.push('#'),
+                    1 => s.push('.'),
+                    2 => s.push('O'),
+                    _ => unreachable!(),
+                }
+            } else {
+                s.push(' ')
+            }
+        }
+        s.push('\n')
+    }
+    s
 }
 
 fn move_droid(coord: Coord, input: Int) -> Coord {
