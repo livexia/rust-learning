@@ -39,13 +39,43 @@ fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
-    computer.add_input(2);
     computer.run();
+    let image = parse_output(&computer.get_output());
+    println!("{}", draw(&image));
+    computer.program[0] = 2;
+    println!("{}", computer.run());
     let &output = computer.output.last().unwrap();
 
     writeln!(io::stdout(), "Part 2: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
+}
+
+fn dfs(image: &[Vec<u8>], x: usize, y: usize) -> Vec<(usize, usize)> {
+    if x > 0 && image[x - 1][y] == b'#' {
+        dfs(image, x - 1, y);
+    }
+    if y > 0 && image[x][y - 1] == b'#' {
+        dfs(image, x, y - 1);
+    }
+    if x + 1 < image.len() && image[x + 1][y] == b'#' {
+        dfs(image, x + 1, y);
+    }
+    if y + 1 < image[0].len() && image[x][y + 1] == b'#' {
+        dfs(image, x, y + 1);
+    }
+    todo!()
+}
+
+fn draw(image: &[Vec<u8>]) -> String {
+    let mut s = String::new();
+    for row in image.iter() {
+        for &byte in row.iter() {
+            s.push(byte as char)
+        }
+        s.push('\n')
+    }
+    s
 }
 
 fn find_intersection(image: &[Vec<u8>]) -> Vec<(usize, usize)> {
@@ -80,7 +110,7 @@ fn parse_output(output: &[Int]) -> Vec<Vec<u8>> {
                 }
             }
             b'X' => todo!(),
-            _ => unreachable!("unknown ASCII: {item}"),
+            _ => unreachable!("unknown ASCII: {} => {}", item, item as char),
         }
     }
     image
