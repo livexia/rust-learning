@@ -44,23 +44,77 @@ fn part2(program: &[Int]) -> Result<Int> {
     println!("{}", draw(&image));
     let (x, y) = find_start_location(&image).ok_or("can not find start location")?;
     let path = path_find(&image, x, y);
-    println!("{x}, {y}, {:?}", path);
-    for part in path {
-        if [b'L', b'R'].contains(&(part as u8)) {
-            print!("{},", (part as u8) as char)
-        } else {
-            print!("{part},");
-        }
-    }
-    println!();
+    let _routines = routine_find(&path);
+
+    let a = [b'L', 6, b'R', 8, b'L', 4, b'R', 8, b'L', 12];
+    let b = [b'L', 12, b'R', 10, b'L', 4];
+    let c = [b'L', 12, b'L', 6, b'L', 4, b'L', 4];
+    let routines = [b'A', b'B', b'B', b'C', b'B', b'C', b'B', b'C', b'A', b'A'];
+    let mut computer = Computer::new(program);
 
     computer.program[0] = 2;
-    println!("{}", computer.run());
+    run_routine(&mut computer, parse_routine(&routines));
+    run_routine(&mut computer, parse_routine(&a));
+    run_routine(&mut computer, parse_routine(&b));
+    run_routine(&mut computer, parse_routine(&c));
+    computer.input = vec![b'\n' as Int, b'n' as Int];
+    computer.run();
     let &output = computer.output.last().unwrap();
 
     writeln!(io::stdout(), "Part 2: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(output)
+}
+
+fn parse_routine(r: &[u8]) -> Vec<Int> {
+    let mut result = vec![];
+    for &p in r {
+        if p == b'L' || p == b'R' || p == b'A' || p == b'B' || p == b'C' {
+            result.push(p as Int);
+        } else {
+            for char in p.to_string().bytes() {
+                result.push(char as Int)
+            }
+        }
+        result.push(b',' as Int);
+    }
+    result.pop();
+    result.push(b'\n' as Int);
+    result.reverse();
+    result
+}
+
+fn run_routine(computer: &mut Computer, r: Vec<Int>) {
+    computer.input = r;
+    computer.run();
+}
+
+fn routine_find(path: &[usize]) -> Vec<Vec<usize>> {
+    let mut s = String::new();
+    for &part in path {
+        if [b'L', b'R'].contains(&(part as u8)) {
+            s.push((part as u8) as char)
+        } else {
+            s.push_str(&format!("{part}"));
+        }
+        s.push(',');
+    }
+    println!("{s}");
+    let mut r = vec![];
+
+    // let mut start = 0;
+    // while start < path.len() {
+    // for l in (0..11).rev() {
+    //     let pattern = &s[start..start + l];
+    //     if let Some(next) = s[start + l..].find(pattern) {
+    //         println!("l: {} -> {}", start + l, start + l + next);
+    //         r.push(pattern);
+    //         start += l;
+    //         break;
+    //     }
+    // }
+    // }
+    r
 }
 
 fn path_find(image: &[Vec<u8>], mut x: usize, mut y: usize) -> Vec<usize> {
