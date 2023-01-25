@@ -42,6 +42,18 @@ fn part2(program: &[Int]) -> Result<Int> {
     computer.run();
     let image = parse_output(&computer.get_output());
     println!("{}", draw(&image));
+    let (x, y) = find_start_location(&image).ok_or("can not find start location")?;
+    let path = path_find(&image, x, y);
+    println!("{x}, {y}, {:?}", path);
+    for part in path {
+        if [b'L', b'R'].contains(&(part as u8)) {
+            print!("{},", (part as u8) as char)
+        } else {
+            print!("{part},");
+        }
+    }
+    println!();
+
     computer.program[0] = 2;
     println!("{}", computer.run());
     let &output = computer.output.last().unwrap();
@@ -51,20 +63,87 @@ fn part2(program: &[Int]) -> Result<Int> {
     Ok(output)
 }
 
-fn dfs(image: &[Vec<u8>], x: usize, y: usize) -> Vec<(usize, usize)> {
-    if x > 0 && image[x - 1][y] == b'#' {
-        dfs(image, x - 1, y);
+fn path_find(image: &[Vec<u8>], mut x: usize, mut y: usize) -> Vec<usize> {
+    let mut path = vec![];
+    let mut count;
+    let mut facing = image[x][y];
+    let mut last_turn = None;
+    loop {
+        (count, (x, y)) = straight(image, x, y, facing);
+        if count > 1 {
+            if let Some(turn) = last_turn {
+                path.push(turn as usize);
+                last_turn = None;
+            }
+            path.push(count);
+        } else {
+            if last_turn == None {
+                facing = turn_left(facing);
+                last_turn = Some(b'L');
+            } else if last_turn == Some(b'L') {
+                facing = turn_right(facing);
+                facing = turn_right(facing);
+                last_turn = Some(b'R');
+            } else {
+                break;
+            }
+        }
     }
-    if y > 0 && image[x][y - 1] == b'#' {
-        dfs(image, x, y - 1);
+    path
+}
+
+fn turn_left(facing: u8) -> u8 {
+    match facing {
+        b'^' => b'<',
+        b'v' => b'>',
+        b'<' => b'v',
+        b'>' => b'^',
+        _ => unreachable!("invalid facing: {}", facing as char),
     }
-    if x + 1 < image.len() && image[x + 1][y] == b'#' {
-        dfs(image, x + 1, y);
+}
+
+fn turn_right(facing: u8) -> u8 {
+    match facing {
+        b'^' => b'>',
+        b'v' => b'<',
+        b'<' => b'^',
+        b'>' => b'v',
+        _ => unreachable!("invalid facing: {}", facing as char),
     }
-    if y + 1 < image[0].len() && image[x][y + 1] == b'#' {
-        dfs(image, x, y + 1);
+}
+
+fn straight(image: &[Vec<u8>], mut x: usize, mut y: usize, facing: u8) -> (usize, (usize, usize)) {
+    let mut count = 0;
+    let mut dest = (x, y);
+    while image[x][y] != b'.' {
+        if facing == b'^' && x > 0 {
+            x -= 1;
+        } else if facing == b'v' && x + 1 < image.len() {
+            x += 1;
+        } else if facing == b'<' && y > 0 {
+            y -= 1;
+        } else if facing == b'>' && y + 1 < image[0].len() {
+            y += 1;
+        } else {
+            break;
+        }
+        if image[x][y] == b'#' {
+            count += 1;
+            dest = (x, y);
+        }
     }
-    todo!()
+    (count, dest)
+}
+
+fn find_start_location(image: &[Vec<u8>]) -> Option<(usize, usize)> {
+    for x in 0..image.len() {
+        for y in 0..image[0].len() {
+            if [b'^', b'v', b'<', b'>'].contains(&image[x][y]) {
+                return Some((x, y));
+            }
+        }
+    }
+    None
 }
 
 fn draw(image: &[Vec<u8>]) -> String {
