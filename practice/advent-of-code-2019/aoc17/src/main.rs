@@ -44,19 +44,23 @@ fn part2(program: &[Int]) -> Result<Int> {
     println!("{}", draw(&image));
     let (x, y) = find_start_location(&image).ok_or("can not find start location")?;
     let path = path_find(&image, x, y);
-    let _routines = routine_find(&path);
+    let functions = function_find(&path);
+    let _routines = routine_find(&path, &functions);
 
-    let a = [b'L', 6, b'R', 8, b'L', 4, b'R', 8, b'L', 12];
-    let b = [b'L', 12, b'R', 10, b'L', 4];
-    let c = [b'L', 12, b'L', 6, b'L', 4, b'L', 4];
+    // solve by hand
     let routines = [b'A', b'B', b'B', b'C', b'B', b'C', b'B', b'C', b'A', b'A'];
+    let functions = vec![
+        vec![b'L', 6, b'R', 8, b'L', 4, b'R', 8, b'L', 12],
+        vec![b'L', 12, b'R', 10, b'L', 4],
+        vec![b'L', 12, b'L', 6, b'L', 4, b'L', 4],
+    ];
     let mut computer = Computer::new(program);
 
     computer.program[0] = 2;
     run_routine(&mut computer, parse_routine(&routines));
-    run_routine(&mut computer, parse_routine(&a));
-    run_routine(&mut computer, parse_routine(&b));
-    run_routine(&mut computer, parse_routine(&c));
+    run_routine(&mut computer, parse_routine(&functions[0]));
+    run_routine(&mut computer, parse_routine(&functions[1]));
+    run_routine(&mut computer, parse_routine(&functions[2]));
     computer.input = vec![b'\n' as Int, b'n' as Int];
     computer.run();
     let &output = computer.output.last().unwrap();
@@ -89,35 +93,43 @@ fn run_routine(computer: &mut Computer, r: Vec<Int>) {
     computer.run();
 }
 
-fn routine_find(path: &[usize]) -> Vec<Vec<usize>> {
-    let mut s = String::new();
-    for &part in path {
-        if [b'L', b'R'].contains(&(part as u8)) {
-            s.push((part as u8) as char)
-        } else {
-            s.push_str(&format!("{part}"));
-        }
-        s.push(',');
-    }
-    println!("{s}");
+fn routine_find(path: &[u8], functions: &[Vec<u8>]) -> Vec<u8> {
     let mut r = vec![];
-
-    // let mut start = 0;
-    // while start < path.len() {
-    // for l in (0..11).rev() {
-    //     let pattern = &s[start..start + l];
-    //     if let Some(next) = s[start + l..].find(pattern) {
-    //         println!("l: {} -> {}", start + l, start + l + next);
-    //         r.push(pattern);
-    //         start += l;
-    //         break;
-    //     }
-    // }
-    // }
+    let mut start = 0;
+    'outer: while start < path.len() {
+        for (f, n) in functions.iter().zip([b'A', b'B', b'C']) {
+            let l = f.len();
+            if &path[start..start + l] == f {
+                r.push(n);
+                start += l;
+                continue 'outer;
+            }
+        }
+        break;
+    }
     r
 }
 
-fn path_find(image: &[Vec<u8>], mut x: usize, mut y: usize) -> Vec<usize> {
+fn function_find(path: &[u8]) -> Vec<Vec<u8>> {
+    let mut r = vec![];
+
+    let mut start = 0;
+    'outer: while start < path.len() && r.len() <= 3 {
+        for l in (1..=10).rev() {
+            let pattern = &path[start..start + l];
+            for next in start + l..path.len() - l {
+                if &path[next..next + l] == pattern {
+                    r.push(pattern.to_owned());
+                    start += l;
+                    continue 'outer;
+                }
+            }
+        }
+    }
+    r
+}
+
+fn path_find(image: &[Vec<u8>], mut x: usize, mut y: usize) -> Vec<u8> {
     let mut path = vec![];
     let mut count;
     let mut facing = image[x][y];
@@ -126,21 +138,19 @@ fn path_find(image: &[Vec<u8>], mut x: usize, mut y: usize) -> Vec<usize> {
         (count, (x, y)) = straight(image, x, y, facing);
         if count > 1 {
             if let Some(turn) = last_turn {
-                path.push(turn as usize);
+                path.push(turn);
                 last_turn = None;
             }
             path.push(count);
+        } else if last_turn.is_none() {
+            facing = turn_left(facing);
+            last_turn = Some(b'L');
+        } else if last_turn == Some(b'L') {
+            facing = turn_right(facing);
+            facing = turn_right(facing);
+            last_turn = Some(b'R');
         } else {
-            if last_turn == None {
-                facing = turn_left(facing);
-                last_turn = Some(b'L');
-            } else if last_turn == Some(b'L') {
-                facing = turn_right(facing);
-                facing = turn_right(facing);
-                last_turn = Some(b'R');
-            } else {
-                break;
-            }
+            break;
         }
     }
     path
@@ -166,7 +176,7 @@ fn turn_right(facing: u8) -> u8 {
     }
 }
 
-fn straight(image: &[Vec<u8>], mut x: usize, mut y: usize, facing: u8) -> (usize, (usize, usize)) {
+fn straight(image: &[Vec<u8>], mut x: usize, mut y: usize, facing: u8) -> (u8, (usize, usize)) {
     let mut count = 0;
     let mut dest = (x, y);
     while image[x][y] != b'.' {
