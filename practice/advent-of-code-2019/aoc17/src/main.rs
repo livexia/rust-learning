@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
-use std::net::SocketAddrV6;
 use std::time::Instant;
 
 #[allow(unused_macros)]
@@ -132,7 +131,7 @@ fn function_find(path: &[u8]) -> Vec<Vec<u8>> {
             continue;
         }
         let pattern = &path[start..start + l];
-        if let Some(temp) = verify_pattern(pattern, path, &remain) {
+        if let Some(temp) = verify_pattern(pattern, path, remain) {
             r.push(pattern.to_owned());
             remains.push(temp);
         }
