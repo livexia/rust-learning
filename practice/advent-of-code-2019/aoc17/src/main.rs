@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
+use std::net::SocketAddrV6;
 use std::time::Instant;
 
 #[allow(unused_macros)]
@@ -45,15 +46,15 @@ fn part2(program: &[Int]) -> Result<Int> {
     let (x, y) = find_start_location(&image).ok_or("can not find start location")?;
     let path = path_find(&image, x, y);
     let functions = function_find(&path);
-    let _routines = routine_find(&path, &functions);
+    let routines = routine_find(&path, &functions);
 
     // solve by hand
-    let routines = [b'A', b'B', b'B', b'C', b'B', b'C', b'B', b'C', b'A', b'A'];
-    let functions = vec![
-        vec![b'L', 6, b'R', 8, b'L', 4, b'R', 8, b'L', 12],
-        vec![b'L', 12, b'R', 10, b'L', 4],
-        vec![b'L', 12, b'L', 6, b'L', 4, b'L', 4],
-    ];
+    // let routines = [b'A', b'B', b'B', b'C', b'B', b'C', b'B', b'C', b'A', b'A'];
+    // let functions = vec![
+    //     vec![b'L', 6, b'R', 8, b'L', 4, b'R', 8, b'L', 12],
+    //     vec![b'L', 12, b'R', 10, b'L', 4],
+    //     vec![b'L', 12, b'L', 6, b'L', 4, b'L', 4],
+    // ];
     let mut computer = Computer::new(program);
 
     computer.program[0] = 2;
@@ -112,21 +113,68 @@ fn routine_find(path: &[u8], functions: &[Vec<u8>]) -> Vec<u8> {
 
 fn function_find(path: &[u8]) -> Vec<Vec<u8>> {
     let mut r = vec![];
+    let mut try_length = [10, 10, 10];
 
-    let mut start = 0;
-    'outer: while start < path.len() && r.len() <= 3 {
-        for l in (1..=10).rev() {
-            let pattern = &path[start..start + l];
-            for next in start + l..path.len() - l {
-                if &path[next..next + l] == pattern {
-                    r.push(pattern.to_owned());
-                    start += l;
-                    continue 'outer;
-                }
-            }
+    let mut remains = vec![vec![(0, path.len())]];
+
+    while !remains.last().unwrap().is_empty() {
+        let l = try_length[r.len()];
+        if l == 3 {
+            try_length[r.len()] = 10;
+            r.pop();
+            remains.pop();
+            continue;
+        }
+        try_length[r.len()] -= 1;
+        let remain = remains.last().unwrap();
+        let (start, end) = remain[0];
+        if start + l > end {
+            continue;
+        }
+        let pattern = &path[start..start + l];
+        if let Some(temp) = verify_pattern(pattern, path, &remain) {
+            r.push(pattern.to_owned());
+            remains.push(temp);
         }
     }
     r
+}
+
+fn verify_pattern(
+    pattern: &[u8],
+    path: &[u8],
+    remain: &[(usize, usize)],
+) -> Option<Vec<(usize, usize)>> {
+    let l = pattern.len();
+    let mut result = vec![];
+    let mut interval_count = 0;
+    for &(start, end) in remain {
+        if end - start < l {
+            result.push((start, end));
+        }
+        let mut last_found = start;
+        let mut next = start;
+        while next <= end - l {
+            if pattern == &path[next..next + l] {
+                interval_count += 1;
+                if last_found != next {
+                    result.push((last_found, next));
+                }
+                next += l;
+                last_found = next;
+            } else {
+                next += 1;
+            }
+        }
+        if last_found != end {
+            result.push((last_found, end));
+        }
+    }
+    if interval_count != 1 {
+        Some(result)
+    } else {
+        None
+    }
 }
 
 fn path_find(image: &[Vec<u8>], mut x: usize, mut y: usize) -> Vec<u8> {
