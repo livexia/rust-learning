@@ -1,4 +1,4 @@
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashSet;
 use std::collections::VecDeque;
 use std::error::Error;
 use std::io::{self, Read, Write};
@@ -15,10 +15,13 @@ type Coord = (usize, usize);
 fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
-    let grid = parse_input(&input);
+    let mut grid = parse_input(&input);
 
     part1(&grid)?;
-    // part2()?;
+
+    let entrance = find_entrance(&grid).unwrap();
+    update_map(&mut grid, entrance);
+    part2(&grid)?;
     Ok(())
 }
 
@@ -26,11 +29,7 @@ fn part1(grid: &[Vec<char>]) -> Result<usize> {
     let start = Instant::now();
 
     let entrance = find_entrance(grid).unwrap();
-    let keys = find_keys(grid);
-    if keys.len() > 32 {
-        unimplemented!("for {} keys", keys.len())
-    }
-    let complete_keys = keys.keys().fold(0, |h, &c| h | key_hash(c));
+    let complete_keys = find_keys(grid);
     let result = bfs_all_keys(grid, entrance, complete_keys).unwrap();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
@@ -38,10 +37,36 @@ fn part1(grid: &[Vec<char>]) -> Result<usize> {
     Ok(result)
 }
 
+fn part2(grid: &[Vec<char>]) -> Result<usize> {
+    let start = Instant::now();
+
+    let entrance = find_entrance(grid).unwrap();
+    let complete_keys = find_keys(grid);
+    let result = bfs_all_keys(&grid, entrance, complete_keys).unwrap();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn update_map(grid: &mut [Vec<char>], entrance: Coord) {
+    let (x, y) = entrance;
+    grid[x][y] = '#';
+    grid[x - 1][y] = '#';
+    grid[x][y - 1] = '#';
+    grid[x + 1][y] = '#';
+    grid[x][y + 1] = '#';
+    grid[x - 1][y - 1] = '@';
+    grid[x - 1][y + 1] = '@';
+    grid[x + 1][y - 1] = '@';
+    grid[x + 1][y + 1] = '@';
+}
+
 fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<usize> {
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
     queue.push_back((src, 0));
+    visited.insert((src, 0));
     let mut depth = 0;
     while !queue.is_empty() {
         let size = queue.len();
@@ -71,15 +96,21 @@ fn key_hash(key: char) -> u32 {
     1 << (key as u8 - b'a')
 }
 
-fn find_keys(grid: &[Vec<char>]) -> HashMap<char, Coord> {
-    let mut keys = HashMap::new();
+fn find_keys(grid: &[Vec<char>]) -> u32 {
+    let mut keys = 0;
+    let mut count = 0;
 
     for x in 1..grid.len() - 1 {
         for y in 1..grid[0].len() - 1 {
             if is_key(grid[x][y]) {
-                keys.insert(grid[x][y], (x, y));
+                keys |= key_hash(grid[x][y]);
+                count += 1;
             }
         }
+    }
+
+    if count > 32 {
+        unimplemented!("for {} keys", count)
     }
 
     keys
@@ -114,8 +145,9 @@ fn accessible_adjacent(x: usize, y: usize, grid: &[Vec<char>], owned_keys: u32) 
 fn is_accessible(x: usize, y: usize, grid: &[Vec<char>], owned_keys: u32) -> bool {
     valid_coord(x, y, grid.len(), grid[0].len())
         && (grid[x][y] == '.'
-            || (is_door(grid[x][y]) && owned_keys & key_hash(door_to_key(grid[x][y])) != 0)
-            || is_key(grid[x][y]))
+            || grid[x][y] == '@'
+            || is_key(grid[x][y])
+            || (is_door(grid[x][y]) && owned_keys & key_hash(door_to_key(grid[x][y])) != 0))
 }
 
 fn valid_coord(x: usize, y: usize, height: usize, width: usize) -> bool {
@@ -139,7 +171,7 @@ fn parse_input(input: &str) -> Vec<Vec<char>> {
 }
 
 #[test]
-fn example_input() {
+fn example_input_part1() {
     let input = "#########
     #b.A.@.a#
     #########";
@@ -182,4 +214,49 @@ fn example_input() {
     ########################";
     let grid = parse_input(input);
     assert_eq!(part1(&grid).unwrap(), 81);
+}
+
+#[test]
+fn example_input_part2() {
+    let input = "#######
+    #a.#Cd#
+    ##@#@##
+    #######
+    ##@#@##
+    #cB#Ab#
+    #######";
+    let grid = parse_input(input);
+    assert_eq!(part2(&grid).unwrap(), 8);
+
+    let input = "###############
+    #d.ABC.#.....a#
+    ######@#@######
+    ###############
+    ######@#@######
+    #b.....#.....c#
+    ###############";
+    let grid = parse_input(input);
+    assert_eq!(part2(&grid).unwrap(), 24);
+
+    let input = "#############
+    #DcBa.#.GhKl#
+    #.###@#@#I###
+    #e#d#####j#k#
+    ###C#@#@###J#
+    #fEbA.#.FgHi#
+    #############";
+    let grid = parse_input(input);
+    assert_eq!(part1(&grid).unwrap(), 32);
+
+    let input = "#############
+    #g#f.D#..h#l#
+    #F###e#E###.#
+    #dCba@#@BcIJ#
+    #############
+    #nK.L@#@G...#
+    #M###N#H###.#
+    #o#m..#i#jk.#
+    #############";
+    let grid = parse_input(input);
+    assert_eq!(part1(&grid).unwrap(), 72);
 }
