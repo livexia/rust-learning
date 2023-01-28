@@ -41,12 +41,59 @@ fn part2(grid: &[Vec<char>]) -> Result<usize> {
     let start = Instant::now();
 
     let entrances = find_four_entrance(grid);
-    let complete_keys = find_keys(grid);
-    let result = bfs_with_update_map(grid, entrances, complete_keys).unwrap();
+    let four_complete_keys = bfs_find_four_keys(&grid, &entrances);
+    let mut result = 0;
+    for (entrance, complete_keys) in entrances.into_iter().zip(four_complete_keys.into_iter()) {
+        result += bfs_all_keys(grid, entrance, complete_keys).unwrap()
+    }
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
+}
+
+fn bfs_find_four_keys(grid: &[Vec<char>], entrances: &[Coord]) -> [u32; 4] {
+    let height = grid.len();
+    let width = grid[0].len();
+    let mut keys = [0; 4];
+    let mut count = 0;
+
+    let mut index = 0;
+    for (i, &src) in entrances.iter().enumerate() {
+        let mut queue = VecDeque::new();
+        queue.push_back((coord_to_hash(src), 0));
+        let mut visited = HashSet::new();
+        visited.insert((coord_to_hash(src), 0));
+        while let Some((cur, owned_keys)) = queue.pop_front() {
+            let (x, y) = hash_to_coord(cur);
+            for next in [
+                (x.saturating_sub(1), y),
+                (x + 1, y),
+                (x, y.saturating_sub(1)),
+                (x, y + 1),
+            ] {
+                if valid_coord(next.0, next.1, height, width) && grid[next.0][next.1] != '#' {
+                    let kind = grid[next.0][next.1];
+                    assert_ne!(kind, '#');
+                    let temp = if is_key(kind) {
+                        keys[i] |= key_hash(kind);
+                        owned_keys | key_hash(kind)
+                    } else {
+                        owned_keys
+                    };
+                    if visited.insert((coord_to_hash(next), temp)) {
+                        queue.push_back((coord_to_hash(next), temp));
+                    }
+                }
+            }
+        }
+    }
+
+    if count > 32 {
+        unimplemented!("for {} keys", count)
+    }
+
+    keys
 }
 
 fn update_map(grid: &mut [Vec<char>], entrance: Coord) {
@@ -89,7 +136,7 @@ fn bfs_with_update_map(grid: &[Vec<char>], src: Vec<Coord>, complete_keys: u32) 
                     (x, y + 1),
                 ] {
                     if valid_coord(next.0, next.1, height, width)
-                        && is_accessible(grid[next.0][next.1], owned_keys)
+                        && is_accessible(grid[next.0][next.1], owned_keys, complete_keys)
                     {
                         let kind = grid[next.0][next.1];
                         let temp = if is_key(kind) {
@@ -99,7 +146,7 @@ fn bfs_with_update_map(grid: &[Vec<char>], src: Vec<Coord>, complete_keys: u32) 
                         };
                         let new_h = update_four_hash_with_coord(cur, i, next);
                         if let Some(&prev) = visited.get(&new_h) {
-                            if prev == temp || (prev.count_ones() >= temp.count_ones()) {
+                            if prev == temp || prev.count_ones() >= temp.count_ones() {
                                 continue;
                             }
                         }
@@ -145,7 +192,7 @@ fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<us
                 (x, y + 1),
             ] {
                 if valid_coord(next.0, next.1, height, width)
-                    && is_accessible(grid[next.0][next.1], owned_keys)
+                    && is_accessible(grid[next.0][next.1], owned_keys, complete_keys)
                 {
                     let kind = grid[next.0][next.1];
                     assert_ne!(kind, '#');
@@ -242,11 +289,12 @@ fn find_four_entrance(grid: &[Vec<char>]) -> Vec<Coord> {
     r
 }
 
-fn is_accessible(kind: char, owned_keys: u32) -> bool {
+fn is_accessible(kind: char, owned_keys: u32, complete_keys: u32) -> bool {
     kind == '.'
         || kind == '@'
         || is_key(kind)
         || (is_door(kind) && owned_keys & key_hash(door_to_key(kind)) != 0)
+        || (is_door(kind) && complete_keys & key_hash(door_to_key(kind)) == 0)
 }
 
 fn valid_coord(x: usize, y: usize, height: usize, width: usize) -> bool {
