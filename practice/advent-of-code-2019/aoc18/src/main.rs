@@ -1,5 +1,5 @@
 use hashbrown::HashSet;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -63,12 +63,14 @@ fn update_map(grid: &mut [Vec<char>], entrance: Coord) {
 }
 
 fn bfs_with_update_map(grid: &[Vec<char>], src: Vec<Coord>, complete_keys: u32) -> Option<usize> {
+    let height = grid.len();
+    let width = grid[0].len();
     let mut queue = VecDeque::new();
 
-    let mut visited = HashSet::new();
+    let mut visited: HashMap<u64, u32> = HashMap::new();
     let src_h = four_coord_to_hash(src);
     queue.push_back((src_h, 0));
-    visited.insert((src_h, 0));
+    visited.insert(src_h, 0);
     let mut depth = 0;
     while !queue.is_empty() {
         let start = Instant::now();
@@ -86,10 +88,9 @@ fn bfs_with_update_map(grid: &[Vec<char>], src: Vec<Coord>, complete_keys: u32) 
                     (x, y.saturating_sub(1)),
                     (x, y + 1),
                 ] {
-                    if next == (x, y) {
-                        continue;
-                    }
-                    if is_accessible(next.0, next.1, grid, owned_keys) {
+                    if valid_coord(next.0, next.1, height, width)
+                        && is_accessible(grid[next.0][next.1], owned_keys)
+                    {
                         let kind = grid[next.0][next.1];
                         let temp = if is_key(kind) {
                             owned_keys | key_hash(kind)
@@ -97,20 +98,33 @@ fn bfs_with_update_map(grid: &[Vec<char>], src: Vec<Coord>, complete_keys: u32) 
                             owned_keys
                         };
                         let new_h = update_four_hash_with_coord(cur, i, next);
-                        if visited.insert((new_h, temp)) {
-                            queue.push_back((new_h, temp));
+                        if let Some(&prev) = visited.get(&new_h) {
+                            if prev == temp || (prev.count_ones() >= temp.count_ones()) {
+                                continue;
+                            }
                         }
+                        visited.insert(new_h, temp);
+                        queue.push_back((new_h, temp));
                     }
                 }
             }
         }
         depth += 1;
-        println!("{} {} {:?}", depth, queue.len(), start.elapsed());
+        println!(
+            "{} {} {} {:?}",
+            depth,
+            queue.len(),
+            visited.len(),
+            start.elapsed()
+        );
     }
     None
 }
 
 fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<usize> {
+    let height = grid.len();
+    let width = grid[0].len();
+
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
     queue.push_back((coord_to_hash(src), 0));
@@ -130,11 +144,11 @@ fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<us
                 (x, y.saturating_sub(1)),
                 (x, y + 1),
             ] {
-                if next == (x, y) {
-                    continue;
-                }
-                if is_accessible(next.0, next.1, grid, owned_keys) {
+                if valid_coord(next.0, next.1, height, width)
+                    && is_accessible(grid[next.0][next.1], owned_keys)
+                {
                     let kind = grid[next.0][next.1];
+                    assert_ne!(kind, '#');
                     let temp = if is_key(kind) {
                         owned_keys | key_hash(kind)
                     } else {
@@ -155,7 +169,7 @@ fn four_coord_to_hash(v: Vec<Coord>) -> u64 {
     assert_eq!(v.len(), 4);
     let mut r = 0;
     for (i, c) in v.into_iter().enumerate() {
-        r |= coord_to_hash(c) << ((3 - i) * 16)
+        r |= coord_to_hash(c) << (i * 16)
     }
 
     r
@@ -163,12 +177,12 @@ fn four_coord_to_hash(v: Vec<Coord>) -> u64 {
 
 fn four_hash_to_coord(h: u64, i: usize) -> Coord {
     // u64 -> (u16, u16, u16, u16)
-    //           0,    1,  2,   3
-    hash_to_coord(h >> ((3 - i) * 16) & 0xffff)
+    //           3,    2,  1,   0
+    hash_to_coord(h >> (i * 16) & 0xffff)
 }
 fn update_four_hash_with_coord(mut h: u64, i: usize, c: Coord) -> u64 {
-    h &= !(0xffff << ((3 - i) * 16));
-    h |= coord_to_hash(c) << ((3 - i) * 16);
+    h &= !(0xffff << (i * 16));
+    h |= coord_to_hash(c) << (i * 16);
     h
 }
 
@@ -228,12 +242,11 @@ fn find_four_entrance(grid: &[Vec<char>]) -> Vec<Coord> {
     r
 }
 
-fn is_accessible(x: usize, y: usize, grid: &[Vec<char>], owned_keys: u32) -> bool {
-    valid_coord(x, y, grid.len(), grid[0].len())
-        && (grid[x][y] == '.'
-            || grid[x][y] == '@'
-            || is_key(grid[x][y])
-            || (is_door(grid[x][y]) && owned_keys & key_hash(door_to_key(grid[x][y])) != 0))
+fn is_accessible(kind: char, owned_keys: u32) -> bool {
+    kind == '.'
+        || kind == '@'
+        || is_key(kind)
+        || (is_door(kind) && owned_keys & key_hash(door_to_key(kind)) != 0)
 }
 
 fn valid_coord(x: usize, y: usize, height: usize, width: usize) -> bool {
