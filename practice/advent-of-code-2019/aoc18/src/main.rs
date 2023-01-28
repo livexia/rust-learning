@@ -40,9 +40,9 @@ fn part1(grid: &[Vec<char>]) -> Result<usize> {
 fn part2(grid: &[Vec<char>]) -> Result<usize> {
     let start = Instant::now();
 
-    let entrance = find_entrance(grid).unwrap();
+    let entrances = find_four_entrance(grid);
     let complete_keys = find_keys(grid);
-    let result = bfs_all_keys(&grid, entrance, complete_keys).unwrap();
+    let result = bfs_with_update_map(grid, entrances, complete_keys).unwrap();
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -62,11 +62,59 @@ fn update_map(grid: &mut [Vec<char>], entrance: Coord) {
     grid[x + 1][y + 1] = '@';
 }
 
+fn bfs_with_update_map(grid: &[Vec<char>], src: Vec<Coord>, complete_keys: u32) -> Option<usize> {
+    let mut queue = VecDeque::new();
+
+    let mut visited = HashSet::new();
+    let src_h = four_coord_to_hash(src);
+    queue.push_back((src_h, 0));
+    visited.insert((src_h, 0));
+    let mut depth = 0;
+    while !queue.is_empty() {
+        let start = Instant::now();
+        let size = queue.len();
+        for _ in 0..size {
+            let (cur, owned_keys) = queue.pop_front().unwrap();
+            if owned_keys == complete_keys {
+                return Some(depth);
+            }
+            for i in 0..4 {
+                let (x, y) = four_hash_to_coord(cur, i);
+                for next in [
+                    (x.saturating_sub(1), y),
+                    (x + 1, y),
+                    (x, y.saturating_sub(1)),
+                    (x, y + 1),
+                ] {
+                    if next == (x, y) {
+                        continue;
+                    }
+                    if is_accessible(next.0, next.1, grid, owned_keys) {
+                        let kind = grid[next.0][next.1];
+                        let temp = if is_key(kind) {
+                            owned_keys | key_hash(kind)
+                        } else {
+                            owned_keys
+                        };
+                        let new_h = update_four_hash_with_coord(cur, i, next);
+                        if visited.insert((new_h, temp)) {
+                            queue.push_back((new_h, temp));
+                        }
+                    }
+                }
+            }
+        }
+        depth += 1;
+        println!("{} {} {:?}", depth, queue.len(), start.elapsed());
+    }
+    None
+}
+
 fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<usize> {
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
-    queue.push_back((src, 0));
-    visited.insert((src, 0));
+    queue.push_back((coord_to_hash(src), 0));
+    visited.insert((coord_to_hash(src), 0));
     let mut depth = 0;
     while !queue.is_empty() {
         let size = queue.len();
@@ -75,21 +123,62 @@ fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<us
             if owned_keys == complete_keys {
                 return Some(depth);
             }
-            for next in accessible_adjacent(cur.0, cur.1, grid, owned_keys) {
-                let knid = grid[next.0][next.1];
-                let temp = if is_key(knid) {
-                    owned_keys | key_hash(knid)
-                } else {
-                    owned_keys
-                };
-                if visited.insert((next, temp)) {
-                    queue.push_back((next, temp));
+            let (x, y) = hash_to_coord(cur);
+            for next in [
+                (x.saturating_sub(1), y),
+                (x + 1, y),
+                (x, y.saturating_sub(1)),
+                (x, y + 1),
+            ] {
+                if next == (x, y) {
+                    continue;
+                }
+                if is_accessible(next.0, next.1, grid, owned_keys) {
+                    let kind = grid[next.0][next.1];
+                    let temp = if is_key(kind) {
+                        owned_keys | key_hash(kind)
+                    } else {
+                        owned_keys
+                    };
+                    if visited.insert((coord_to_hash(next), temp)) {
+                        queue.push_back((coord_to_hash(next), temp));
+                    }
                 }
             }
         }
         depth += 1;
     }
     None
+}
+
+fn four_coord_to_hash(v: Vec<Coord>) -> u64 {
+    assert_eq!(v.len(), 4);
+    let mut r = 0;
+    for (i, c) in v.into_iter().enumerate() {
+        r |= coord_to_hash(c) << ((3 - i) * 16)
+    }
+
+    r
+}
+
+fn four_hash_to_coord(h: u64, i: usize) -> Coord {
+    // u64 -> (u16, u16, u16, u16)
+    //           0,    1,  2,   3
+    hash_to_coord(h >> ((3 - i) * 16) & 0xffff)
+}
+fn update_four_hash_with_coord(mut h: u64, i: usize, c: Coord) -> u64 {
+    h &= !(0xffff << ((3 - i) * 16));
+    h |= coord_to_hash(c) << ((3 - i) * 16);
+    h
+}
+
+fn coord_to_hash(c: Coord) -> u64 {
+    let (x, y) = (c.0 as u64, c.1 as u64);
+    x << 8 | y
+}
+
+fn hash_to_coord(h: u64) -> Coord {
+    ((h >> 8) as usize, (h & 0xff) as usize)
 }
 
 fn key_hash(key: char) -> u32 {
@@ -127,16 +216,13 @@ fn find_entrance(grid: &[Vec<char>]) -> Option<Coord> {
     None
 }
 
-fn accessible_adjacent(x: usize, y: usize, grid: &[Vec<char>], owned_keys: u32) -> Vec<Coord> {
-    let mut r = Vec::with_capacity(4);
-    for (x, y) in [
-        (x.saturating_sub(1), y),
-        (x + 1, y),
-        (x, y.saturating_sub(1)),
-        (x, y + 1),
-    ] {
-        if is_accessible(x, y, grid, owned_keys) {
-            r.push((x, y));
+fn find_four_entrance(grid: &[Vec<char>]) -> Vec<Coord> {
+    let mut r = vec![];
+    for x in 1..grid.len() - 1 {
+        for y in 1..grid[0].len() - 1 {
+            if grid[x][y] == '@' {
+                r.push((x, y));
+            }
         }
     }
     r
@@ -171,7 +257,7 @@ fn parse_input(input: &str) -> Vec<Vec<char>> {
 }
 
 #[test]
-fn example_input_part1() {
+fn example_input() {
     let input = "#########
     #b.A.@.a#
     #########";
@@ -214,10 +300,8 @@ fn example_input_part1() {
     ########################";
     let grid = parse_input(input);
     assert_eq!(part1(&grid).unwrap(), 81);
-}
 
-#[test]
-fn example_input_part2() {
+    // part2
     let input = "#######
     #a.#Cd#
     ##@#@##
@@ -246,7 +330,7 @@ fn example_input_part2() {
     #fEbA.#.FgHi#
     #############";
     let grid = parse_input(input);
-    assert_eq!(part1(&grid).unwrap(), 32);
+    assert_eq!(part2(&grid).unwrap(), 32);
 
     let input = "#############
     #g#f.D#..h#l#
@@ -258,5 +342,5 @@ fn example_input_part2() {
     #o#m..#i#jk.#
     #############";
     let grid = parse_input(input);
-    assert_eq!(part1(&grid).unwrap(), 72);
+    assert_eq!(part2(&grid).unwrap(), 72);
 }
