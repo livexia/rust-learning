@@ -1,5 +1,5 @@
 use hashbrown::HashSet;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -41,7 +41,8 @@ fn part2(grid: &[Vec<char>]) -> Result<usize> {
     let start = Instant::now();
 
     let entrances = find_four_entrance(grid);
-    let four_complete_keys = bfs_find_four_keys(&grid, &entrances);
+    let four_complete_keys = bfs_four_complete_keys(grid, &entrances);
+    println!("{:b}", four_complete_keys[1]);
     let mut result = 0;
     for (entrance, complete_keys) in entrances.into_iter().zip(four_complete_keys.into_iter()) {
         result += bfs_all_keys(grid, entrance, complete_keys).unwrap()
@@ -52,13 +53,11 @@ fn part2(grid: &[Vec<char>]) -> Result<usize> {
     Ok(result)
 }
 
-fn bfs_find_four_keys(grid: &[Vec<char>], entrances: &[Coord]) -> [u32; 4] {
+fn bfs_four_complete_keys(grid: &[Vec<char>], entrances: &[Coord]) -> [u32; 4] {
     let height = grid.len();
     let width = grid[0].len();
     let mut keys = [0; 4];
-    let mut count = 0;
 
-    let mut index = 0;
     for (i, &src) in entrances.iter().enumerate() {
         let mut queue = VecDeque::new();
         queue.push_back((coord_to_hash(src), 0));
@@ -74,7 +73,6 @@ fn bfs_find_four_keys(grid: &[Vec<char>], entrances: &[Coord]) -> [u32; 4] {
             ] {
                 if valid_coord(next.0, next.1, height, width) && grid[next.0][next.1] != '#' {
                     let kind = grid[next.0][next.1];
-                    assert_ne!(kind, '#');
                     let temp = if is_key(kind) {
                         keys[i] |= key_hash(kind);
                         owned_keys | key_hash(kind)
@@ -87,10 +85,6 @@ fn bfs_find_four_keys(grid: &[Vec<char>], entrances: &[Coord]) -> [u32; 4] {
                 }
             }
         }
-    }
-
-    if count > 32 {
-        unimplemented!("for {} keys", count)
     }
 
     keys
@@ -107,65 +101,6 @@ fn update_map(grid: &mut [Vec<char>], entrance: Coord) {
     grid[x - 1][y + 1] = '@';
     grid[x + 1][y - 1] = '@';
     grid[x + 1][y + 1] = '@';
-}
-
-fn bfs_with_update_map(grid: &[Vec<char>], src: Vec<Coord>, complete_keys: u32) -> Option<usize> {
-    let height = grid.len();
-    let width = grid[0].len();
-    let mut queue = VecDeque::new();
-
-    let mut visited: HashMap<u64, u32> = HashMap::new();
-    let src_h = four_coord_to_hash(src);
-    queue.push_back((src_h, 0));
-    visited.insert(src_h, 0);
-    let mut depth = 0;
-    while !queue.is_empty() {
-        let start = Instant::now();
-        let size = queue.len();
-        for _ in 0..size {
-            let (cur, owned_keys) = queue.pop_front().unwrap();
-            if owned_keys == complete_keys {
-                return Some(depth);
-            }
-            for i in 0..4 {
-                let (x, y) = four_hash_to_coord(cur, i);
-                for next in [
-                    (x.saturating_sub(1), y),
-                    (x + 1, y),
-                    (x, y.saturating_sub(1)),
-                    (x, y + 1),
-                ] {
-                    if valid_coord(next.0, next.1, height, width)
-                        && is_accessible(grid[next.0][next.1], owned_keys, complete_keys)
-                    {
-                        let kind = grid[next.0][next.1];
-                        let temp = if is_key(kind) {
-                            owned_keys | key_hash(kind)
-                        } else {
-                            owned_keys
-                        };
-                        let new_h = update_four_hash_with_coord(cur, i, next);
-                        if let Some(&prev) = visited.get(&new_h) {
-                            if prev == temp || prev.count_ones() >= temp.count_ones() {
-                                continue;
-                            }
-                        }
-                        visited.insert(new_h, temp);
-                        queue.push_back((new_h, temp));
-                    }
-                }
-            }
-        }
-        depth += 1;
-        println!(
-            "{} {} {} {:?}",
-            depth,
-            queue.len(),
-            visited.len(),
-            start.elapsed()
-        );
-    }
-    None
 }
 
 fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<usize> {
@@ -195,7 +130,6 @@ fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<us
                     && is_accessible(grid[next.0][next.1], owned_keys, complete_keys)
                 {
                     let kind = grid[next.0][next.1];
-                    assert_ne!(kind, '#');
                     let temp = if is_key(kind) {
                         owned_keys | key_hash(kind)
                     } else {
@@ -210,27 +144,6 @@ fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<us
         depth += 1;
     }
     None
-}
-
-fn four_coord_to_hash(v: Vec<Coord>) -> u64 {
-    assert_eq!(v.len(), 4);
-    let mut r = 0;
-    for (i, c) in v.into_iter().enumerate() {
-        r |= coord_to_hash(c) << (i * 16)
-    }
-
-    r
-}
-
-fn four_hash_to_coord(h: u64, i: usize) -> Coord {
-    // u64 -> (u16, u16, u16, u16)
-    //           3,    2,  1,   0
-    hash_to_coord(h >> (i * 16) & 0xffff)
-}
-fn update_four_hash_with_coord(mut h: u64, i: usize, c: Coord) -> u64 {
-    h &= !(0xffff << (i * 16));
-    h |= coord_to_hash(c) << (i * 16);
-    h
 }
 
 fn coord_to_hash(c: Coord) -> u64 {
@@ -248,19 +161,13 @@ fn key_hash(key: char) -> u32 {
 
 fn find_keys(grid: &[Vec<char>]) -> u32 {
     let mut keys = 0;
-    let mut count = 0;
 
     for x in 1..grid.len() - 1 {
         for y in 1..grid[0].len() - 1 {
             if is_key(grid[x][y]) {
                 keys |= key_hash(grid[x][y]);
-                count += 1;
             }
         }
-    }
-
-    if count > 32 {
-        unimplemented!("for {} keys", count)
     }
 
     keys
