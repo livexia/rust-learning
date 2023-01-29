@@ -1,4 +1,4 @@
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::error::Error;
 use std::io::{self, Read, Write};
@@ -11,6 +11,7 @@ macro_rules! err {
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
 type Coord = (usize, usize);
+type ShortestPathMatrix = HashMap<Coord, Vec<(Coord, (usize, u32, u32))>>;
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -19,7 +20,7 @@ fn main() -> Result<()> {
 
     part1(&grid)?;
 
-    let entrance = find_entrance(&grid).unwrap();
+    let entrance = find_entrances(&grid)[0];
     update_map(&mut grid, entrance);
     part2(&grid)?;
     Ok(())
@@ -28,9 +29,20 @@ fn main() -> Result<()> {
 fn part1(grid: &[Vec<char>]) -> Result<usize> {
     let start = Instant::now();
 
-    let entrance = find_entrance(grid).unwrap();
-    let complete_keys = find_keys(grid);
-    let result = bfs_all_keys(grid, entrance, complete_keys).unwrap();
+    let entrances = find_entrances(grid);
+    let keys = find_keys(grid);
+    let shortest_paths = build_shortest_path_matrix(grid, &entrances, &keys);
+
+    let complete_keys = get_complete_keys(&entrances, &shortest_paths, grid)[0];
+    let result = dfs(
+        grid,
+        &shortest_paths,
+        entrances[0],
+        0,
+        complete_keys,
+        &mut HashMap::new(),
+    )
+    .unwrap();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -40,12 +52,22 @@ fn part1(grid: &[Vec<char>]) -> Result<usize> {
 fn part2(grid: &[Vec<char>]) -> Result<usize> {
     let start = Instant::now();
 
-    let entrances = find_four_entrance(grid);
-    let four_complete_keys = bfs_four_complete_keys(grid, &entrances);
-    println!("{:b}", four_complete_keys[1]);
+    let entrances = find_entrances(grid);
+    let keys = find_keys(grid);
+    let shortest_paths = build_shortest_path_matrix(grid, &entrances, &keys);
+    let complete_keys = get_complete_keys(&entrances, &shortest_paths, grid);
+
     let mut result = 0;
-    for (entrance, complete_keys) in entrances.into_iter().zip(four_complete_keys.into_iter()) {
-        result += bfs_all_keys(grid, entrance, complete_keys).unwrap()
+    for (&entrance, keys) in entrances.iter().zip(complete_keys) {
+        result += dfs(
+            grid,
+            &shortest_paths,
+            entrance,
+            0,
+            keys,
+            &mut HashMap::new(),
+        )
+        .unwrap()
     }
 
     writeln!(io::stdout(), "Part 2: {result}")?;
@@ -53,18 +75,113 @@ fn part2(grid: &[Vec<char>]) -> Result<usize> {
     Ok(result)
 }
 
-fn bfs_four_complete_keys(grid: &[Vec<char>], entrances: &[Coord]) -> [u32; 4] {
+fn dfs(
+    grid: &[Vec<char>],
+    shortest_paths: &ShortestPathMatrix,
+    src: Coord,
+    owned_keys: u32,
+    complete_keys: u32,
+    cache: &mut HashMap<(Coord, u32), Option<usize>>,
+) -> Option<usize> {
+    if let Some(&r) = cache.get(&(src, owned_keys)) {
+        return r;
+    }
+    if owned_keys == complete_keys {
+        return Some(0);
+    }
+    let mut result = usize::MAX;
+    if let Some(keys) = shortest_paths.get(&src) {
+        let mut keys = keys.to_owned();
+        keys.sort_by_key(|a| a.1 .0);
+        for &(next, (distance, found_keys, required_keys)) in &keys {
+            let kind = grid[next.0][next.1];
+            if kind == '@' || key_hash(kind) & owned_keys != 0 {
+                continue;
+            }
+            let default_owned_keys = required_keys & !complete_keys;
+            if owned_keys | required_keys > (owned_keys | default_owned_keys) {
+                continue;
+            }
+            if let Some(d) = dfs(
+                grid,
+                shortest_paths,
+                next,
+                owned_keys | key_hash(kind) | found_keys,
+                complete_keys,
+                cache,
+            ) {
+                result = result.min(distance + d);
+            } else {
+                unreachable!();
+            }
+        }
+    }
+    let result = if result == usize::MAX {
+        None
+    } else {
+        Some(result)
+    };
+    cache.insert((src, owned_keys), result);
+    result
+}
+
+fn get_complete_keys(
+    entrances: &[Coord],
+    shortest_paths: &ShortestPathMatrix,
+    grid: &[Vec<char>],
+) -> Vec<u32> {
+    let mut r = vec![];
+    for e in entrances {
+        if let Some(v) = shortest_paths.get(e) {
+            r.push(
+                v.iter()
+                    .fold(0, |s, ((x, y), _)| s | key_hash(grid[*x][*y])),
+            )
+        } else {
+            unreachable!()
+        }
+    }
+
+    r
+}
+
+fn build_shortest_path_matrix(
+    grid: &[Vec<char>],
+    entrances: &[Coord],
+    keys: &[Coord],
+) -> ShortestPathMatrix {
+    let mut shortest_paths = ShortestPathMatrix::new();
+    for (i, &a) in keys.iter().chain(entrances.iter()).enumerate() {
+        for &b in keys.iter().chain(entrances.iter()).skip(i + 1) {
+            if let Some(distance) = shortest_path_bfs(grid, a, b) {
+                shortest_paths.entry(a).or_default().push((b, distance));
+                shortest_paths.entry(b).or_default().push((a, distance));
+            }
+        }
+    }
+    shortest_paths
+}
+
+// https://www.reddit.com/r/adventofcode/comments/ec8090/comment/fba6uh7
+fn shortest_path_bfs(grid: &[Vec<char>], src: Coord, dest: Coord) -> Option<(usize, u32, u32)> {
     let height = grid.len();
     let width = grid[0].len();
-    let mut keys = [0; 4];
 
-    for (i, &src) in entrances.iter().enumerate() {
-        let mut queue = VecDeque::new();
-        queue.push_back((coord_to_hash(src), 0));
-        let mut visited = HashSet::new();
-        visited.insert((coord_to_hash(src), 0));
-        while let Some((cur, owned_keys)) = queue.pop_front() {
-            let (x, y) = hash_to_coord(cur);
+    let mut queue = VecDeque::new();
+    let mut visited = HashSet::new();
+    queue.push_back((src, 0, 0, 0));
+    while let Some(((x, y), depth, mut keys, mut doors)) = queue.pop_front() {
+        if visited.insert((x, y)) {
+            let kind = grid[x][y];
+            if is_door(kind) {
+                doors |= 1 << (kind as u8 - b'A')
+            }
+            if is_key(kind) {
+                keys |= key_hash(kind)
+            }
+            if (x, y) == dest {
+                return Some((depth, keys, doors));
+            }
             for next in [
                 (x.saturating_sub(1), y),
                 (x + 1, y),
@@ -72,22 +189,12 @@ fn bfs_four_complete_keys(grid: &[Vec<char>], entrances: &[Coord]) -> [u32; 4] {
                 (x, y + 1),
             ] {
                 if valid_coord(next.0, next.1, height, width) && grid[next.0][next.1] != '#' {
-                    let kind = grid[next.0][next.1];
-                    let temp = if is_key(kind) {
-                        keys[i] |= key_hash(kind);
-                        owned_keys | key_hash(kind)
-                    } else {
-                        owned_keys
-                    };
-                    if visited.insert((coord_to_hash(next), temp)) {
-                        queue.push_back((coord_to_hash(next), temp));
-                    }
+                    queue.push_back((next, depth + 1, keys, doors));
                 }
             }
         }
     }
-
-    keys
+    None
 }
 
 fn update_map(grid: &mut [Vec<char>], entrance: Coord) {
@@ -103,69 +210,17 @@ fn update_map(grid: &mut [Vec<char>], entrance: Coord) {
     grid[x + 1][y + 1] = '@';
 }
 
-fn bfs_all_keys(grid: &[Vec<char>], src: Coord, complete_keys: u32) -> Option<usize> {
-    let height = grid.len();
-    let width = grid[0].len();
-
-    let mut queue = VecDeque::new();
-    let mut visited = HashSet::new();
-    queue.push_back((coord_to_hash(src), 0));
-    visited.insert((coord_to_hash(src), 0));
-    let mut depth = 0;
-    while !queue.is_empty() {
-        let size = queue.len();
-        for _ in 0..size {
-            let (cur, owned_keys) = queue.pop_front().unwrap();
-            if owned_keys == complete_keys {
-                return Some(depth);
-            }
-            let (x, y) = hash_to_coord(cur);
-            for next in [
-                (x.saturating_sub(1), y),
-                (x + 1, y),
-                (x, y.saturating_sub(1)),
-                (x, y + 1),
-            ] {
-                if valid_coord(next.0, next.1, height, width)
-                    && is_accessible(grid[next.0][next.1], owned_keys, complete_keys)
-                {
-                    let kind = grid[next.0][next.1];
-                    let temp = if is_key(kind) {
-                        owned_keys | key_hash(kind)
-                    } else {
-                        owned_keys
-                    };
-                    if visited.insert((coord_to_hash(next), temp)) {
-                        queue.push_back((coord_to_hash(next), temp));
-                    }
-                }
-            }
-        }
-        depth += 1;
-    }
-    None
-}
-
-fn coord_to_hash(c: Coord) -> u64 {
-    let (x, y) = (c.0 as u64, c.1 as u64);
-    x << 8 | y
-}
-
-fn hash_to_coord(h: u64) -> Coord {
-    ((h >> 8) as usize, (h & 0xff) as usize)
-}
-
 fn key_hash(key: char) -> u32 {
     1 << (key as u8 - b'a')
 }
 
-fn find_keys(grid: &[Vec<char>]) -> u32 {
-    let mut keys = 0;
+fn find_keys(grid: &[Vec<char>]) -> Vec<Coord> {
+    let mut keys = Vec::new();
 
     for x in 1..grid.len() - 1 {
         for y in 1..grid[0].len() - 1 {
             if is_key(grid[x][y]) {
-                keys |= key_hash(grid[x][y]);
+                keys.push((x, y));
             }
         }
     }
@@ -173,18 +228,7 @@ fn find_keys(grid: &[Vec<char>]) -> u32 {
     keys
 }
 
-fn find_entrance(grid: &[Vec<char>]) -> Option<Coord> {
-    for x in 1..grid.len() - 1 {
-        for y in 1..grid[0].len() - 1 {
-            if grid[x][y] == '@' {
-                return Some((x, y));
-            }
-        }
-    }
-    None
-}
-
-fn find_four_entrance(grid: &[Vec<char>]) -> Vec<Coord> {
+fn find_entrances(grid: &[Vec<char>]) -> Vec<Coord> {
     let mut r = vec![];
     for x in 1..grid.len() - 1 {
         for y in 1..grid[0].len() - 1 {
@@ -196,24 +240,12 @@ fn find_four_entrance(grid: &[Vec<char>]) -> Vec<Coord> {
     r
 }
 
-fn is_accessible(kind: char, owned_keys: u32, complete_keys: u32) -> bool {
-    kind == '.'
-        || kind == '@'
-        || is_key(kind)
-        || (is_door(kind) && owned_keys & key_hash(door_to_key(kind)) != 0)
-        || (is_door(kind) && complete_keys & key_hash(door_to_key(kind)) == 0)
-}
-
 fn valid_coord(x: usize, y: usize, height: usize, width: usize) -> bool {
     x > 0 && y > 0 && x < height - 1 && y < width - 1
 }
 
 fn is_door(c: char) -> bool {
     ('A'..='Z').contains(&c)
-}
-
-fn door_to_key(c: char) -> char {
-    (c as u8 - b'A' + b'a') as char
 }
 
 fn is_key(c: char) -> bool {
