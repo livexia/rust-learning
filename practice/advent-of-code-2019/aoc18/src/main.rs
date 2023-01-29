@@ -343,4 +343,6 @@ fn example_input() {
     #############";
     let grid = parse_input(input);
     assert_eq!(part2(&grid).unwrap(), 72);
+    // failed because of https://www.reddit.com/r/adventofcode/comments/ec8090/comment/fbbuh42
+    // so this solution won't work on all inputs
 }
