@@ -293,16 +293,16 @@ fn shortest_path_bfs(
                 doors |= 1 << (kind as u8 - b'A')
             }
             if is_key(kind) {
-                shortest_paths
-                    .entry(src)
-                    .or_default()
-                    .insert(((x, y), (depth, keys, doors)));
-                shortest_paths
-                    .entry((x, y))
-                    .or_default()
-                    .insert((src, (depth, keys, doors)));
-                found.insert((src, (x, y)));
-                found.insert(((x, y), src));
+                if found.insert((src, (x, y))) || found.insert(((x, y), src)) {
+                    shortest_paths
+                        .entry(src)
+                        .or_default()
+                        .insert(((x, y), (depth, keys, doors)));
+                    shortest_paths
+                        .entry((x, y))
+                        .or_default()
+                        .insert((src, (depth, keys, doors)));
+                }
                 keys |= key_hash(kind)
             }
             if (x, y) == dest {
