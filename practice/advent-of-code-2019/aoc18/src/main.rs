@@ -11,7 +11,7 @@ macro_rules! err {
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
 type Coord = (usize, usize);
-type ShortestPathMatrix = HashMap<Coord, Vec<(Coord, (usize, u32, u32))>>;
+type ShortestPathMatrix = HashMap<Coord, HashSet<(Coord, (usize, u32, u32))>>;
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -23,6 +23,7 @@ fn main() -> Result<()> {
     let entrance = find_entrances(&grid)[0];
     update_map(&mut grid, entrance);
     part2(&grid)?;
+
     Ok(())
 }
 
@@ -33,19 +34,38 @@ fn part1(grid: &[Vec<char>]) -> Result<usize> {
     let keys = find_keys(grid);
     let shortest_paths = build_shortest_path_matrix(grid, &entrances, &keys);
 
-    let complete_keys = get_complete_keys(&entrances, &shortest_paths, grid)[0];
+    let complete_keys = get_complete_keys(&entrances, &shortest_paths, grid);
+
+    let prepare = start.elapsed();
+    let start = Instant::now();
+
     let result = dfs(
         grid,
         &shortest_paths,
-        entrances[0],
+        coords_to_hash(&entrances),
+        1,
         0,
         complete_keys,
         &mut HashMap::new(),
     )
     .unwrap();
 
+    let dfs_time = start.elapsed();
+    let start = Instant::now();
+
+    assert_eq!(
+        result,
+        bfs(grid, &shortest_paths, &entrances, complete_keys).unwrap()
+    );
+
     writeln!(io::stdout(), "Part 1: {result}")?;
-    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    writeln!(
+        io::stdout(),
+        "> Time elapsed is: prepare: {:?}, dfs: {:?}, bfs: {:?}",
+        prepare,
+        dfs_time,
+        start.elapsed()
+    )?;
     Ok(result)
 }
 
@@ -57,55 +77,141 @@ fn part2(grid: &[Vec<char>]) -> Result<usize> {
     let shortest_paths = build_shortest_path_matrix(grid, &entrances, &keys);
     let complete_keys = get_complete_keys(&entrances, &shortest_paths, grid);
 
-    let mut result = 0;
-    for (&entrance, keys) in entrances.iter().zip(complete_keys) {
-        result += dfs(
-            grid,
-            &shortest_paths,
-            entrance,
-            0,
-            keys,
-            &mut HashMap::new(),
-        )
-        .unwrap()
-    }
+    let prepare = start.elapsed();
+    let start = Instant::now();
+
+    let result = dfs(
+        grid,
+        &shortest_paths,
+        coords_to_hash(&entrances),
+        entrances.len(),
+        0,
+        complete_keys,
+        &mut HashMap::new(),
+    )
+    .unwrap();
+
+    let dfs_time = start.elapsed();
+    let start = Instant::now();
+
+    assert_eq!(
+        bfs(grid, &shortest_paths, &entrances, complete_keys,).unwrap(),
+        result
+    );
 
     writeln!(io::stdout(), "Part 2: {result}")?;
-    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    writeln!(
+        io::stdout(),
+        "> Time elapsed is: prepare: {:?}, dfs: {:?}, bfs: {:?}",
+        prepare,
+        dfs_time,
+        start.elapsed()
+    )?;
     Ok(result)
+}
+
+fn bfs(
+    grid: &[Vec<char>],
+    shortest_paths: &ShortestPathMatrix,
+    src: &[Coord],
+    complete_keys: u32,
+) -> Option<usize> {
+    let mut result = usize::MAX;
+    let mut queue = VecDeque::new();
+    let mut visited = HashMap::new();
+    queue.push_back((coords_to_hash(src), 0, 0));
+    while let Some((coords, owned_keys, dis)) = queue.pop_front() {
+        if dis >= result {
+            continue;
+        }
+        if let Some(&prev) = visited.get(&(coords, owned_keys)) {
+            if prev <= dis {
+                continue;
+            }
+        }
+        visited.insert((coords, owned_keys), dis);
+
+        if owned_keys == complete_keys {
+            result = result.min(dis);
+            continue;
+        }
+        for i in 0..src.len() {
+            let cur = get_coord_from_hash(coords, i);
+            for &(next, (distance, found_keys, required_keys)) in shortest_paths.get(&cur).unwrap()
+            {
+                let kind = grid[next.0][next.1];
+                if kind == '@' || key_hash(kind) & owned_keys != 0 {
+                    continue;
+                }
+                if owned_keys | required_keys > owned_keys {
+                    continue;
+                }
+                queue.push_back((
+                    update_hash_with_coord(coords, i, next),
+                    owned_keys | key_hash(kind) | found_keys,
+                    dis + distance,
+                ));
+            }
+        }
+    }
+
+    if result == usize::MAX {
+        None
+    } else {
+        Some(result)
+    }
+}
+
+fn coords_to_hash(coords: &[Coord]) -> u64 {
+    assert!(coords.len() <= 4);
+    let mut h = 0;
+    for (i, &(x, y)) in coords.iter().enumerate() {
+        h |= ((x as u64) << 8 | y as u64) << (i * 16)
+    }
+    h
+}
+
+fn get_coord_from_hash(h: u64, i: usize) -> Coord {
+    let h = (h >> (i * 16)) & 0xffff;
+    ((h >> 8) as usize, (h & 0xff) as usize)
+}
+
+fn update_hash_with_coord(h: u64, i: usize, coord: Coord) -> u64 {
+    let (x, y) = coord;
+    (h & !(0xffff << (i * 16))) | ((x as u64) << 8 | y as u64) << (i * 16)
 }
 
 fn dfs(
     grid: &[Vec<char>],
     shortest_paths: &ShortestPathMatrix,
-    src: Coord,
+    coords: u64,
+    length: usize,
     owned_keys: u32,
     complete_keys: u32,
-    cache: &mut HashMap<(Coord, u32), Option<usize>>,
+    cache: &mut HashMap<(u64, u32), Option<usize>>,
 ) -> Option<usize> {
-    if let Some(&r) = cache.get(&(src, owned_keys)) {
+    if let Some(&r) = cache.get(&(coords, owned_keys)) {
         return r;
     }
     if owned_keys == complete_keys {
         return Some(0);
     }
     let mut result = usize::MAX;
-    if let Some(keys) = shortest_paths.get(&src) {
-        let mut keys = keys.to_owned();
-        keys.sort_by_key(|a| a.1 .0);
-        for &(next, (distance, found_keys, required_keys)) in &keys {
+    for i in 0..length {
+        let cur = get_coord_from_hash(coords, i);
+        for &(next, (distance, found_keys, required_keys)) in shortest_paths.get(&cur).unwrap() {
             let kind = grid[next.0][next.1];
             if kind == '@' || key_hash(kind) & owned_keys != 0 {
                 continue;
             }
-            let default_owned_keys = required_keys & !complete_keys;
-            if owned_keys | required_keys > (owned_keys | default_owned_keys) {
+            if owned_keys | required_keys > owned_keys {
                 continue;
             }
             if let Some(d) = dfs(
                 grid,
                 shortest_paths,
-                next,
+                update_hash_with_coord(coords, i, next),
+                length,
                 owned_keys | key_hash(kind) | found_keys,
                 complete_keys,
                 cache,
@@ -121,7 +227,7 @@ fn dfs(
     } else {
         Some(result)
     };
-    cache.insert((src, owned_keys), result);
+    cache.insert((coords, owned_keys), result);
     result
 }
 
@@ -129,14 +235,13 @@ fn get_complete_keys(
     entrances: &[Coord],
     shortest_paths: &ShortestPathMatrix,
     grid: &[Vec<char>],
-) -> Vec<u32> {
-    let mut r = vec![];
+) -> u32 {
+    let mut r = 0;
     for e in entrances {
         if let Some(v) = shortest_paths.get(e) {
-            r.push(
-                v.iter()
-                    .fold(0, |s, ((x, y), _)| s | key_hash(grid[*x][*y])),
-            )
+            r |= v
+                .iter()
+                .fold(0, |s, ((x, y), _)| s | key_hash(grid[*x][*y]))
         } else {
             unreachable!()
         }
@@ -151,11 +256,16 @@ fn build_shortest_path_matrix(
     keys: &[Coord],
 ) -> ShortestPathMatrix {
     let mut shortest_paths = ShortestPathMatrix::new();
+    let mut found = HashSet::new();
     for (i, &a) in keys.iter().chain(entrances.iter()).enumerate() {
         for &b in keys.iter().chain(entrances.iter()).skip(i + 1) {
-            if let Some(distance) = shortest_path_bfs(grid, a, b) {
-                shortest_paths.entry(a).or_default().push((b, distance));
-                shortest_paths.entry(b).or_default().push((a, distance));
+            if found.insert((a, b)) || found.insert((b, a)) {
+                if let Some(distance) =
+                    shortest_path_bfs(grid, a, b, &mut shortest_paths, &mut found)
+                {
+                    shortest_paths.entry(a).or_default().insert((b, distance));
+                    shortest_paths.entry(b).or_default().insert((a, distance));
+                }
             }
         }
     }
@@ -163,7 +273,13 @@ fn build_shortest_path_matrix(
 }
 
 // https://www.reddit.com/r/adventofcode/comments/ec8090/comment/fba6uh7
-fn shortest_path_bfs(grid: &[Vec<char>], src: Coord, dest: Coord) -> Option<(usize, u32, u32)> {
+fn shortest_path_bfs(
+    grid: &[Vec<char>],
+    src: Coord,
+    dest: Coord,
+    shortest_paths: &mut ShortestPathMatrix,
+    found: &mut HashSet<(Coord, Coord)>,
+) -> Option<(usize, u32, u32)> {
     let height = grid.len();
     let width = grid[0].len();
 
@@ -177,6 +293,16 @@ fn shortest_path_bfs(grid: &[Vec<char>], src: Coord, dest: Coord) -> Option<(usi
                 doors |= 1 << (kind as u8 - b'A')
             }
             if is_key(kind) {
+                shortest_paths
+                    .entry(src)
+                    .or_default()
+                    .insert(((x, y), (depth, keys, doors)));
+                shortest_paths
+                    .entry((x, y))
+                    .or_default()
+                    .insert((src, (depth, keys, doors)));
+                found.insert((src, (x, y)));
+                found.insert(((x, y), src));
                 keys |= key_hash(kind)
             }
             if (x, y) == dest {
