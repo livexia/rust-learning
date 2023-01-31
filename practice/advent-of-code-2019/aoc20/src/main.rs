@@ -9,7 +9,7 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Coord = (i32, i32);
+type Coord = (usize, usize);
 
 fn main() -> Result<()> {
     let mut input = String::new();
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(portals: &HashMap<String, Vec<Coord>>, grid: &HashMap<Coord, Kind>) -> Result<usize> {
+fn part1(portals: &HashMap<String, Vec<Coord>>, grid: &[Vec<Kind>]) -> Result<usize> {
     let start = Instant::now();
 
     let src = portals.get("AA").unwrap()[0];
@@ -36,32 +36,31 @@ fn part1(portals: &HashMap<String, Vec<Coord>>, grid: &HashMap<Coord, Kind>) -> 
 fn bfs(
     src: Coord,
     dest: Coord,
-    grid: &HashMap<Coord, Kind>,
+    grid: &[Vec<Kind>],
     portals: &HashMap<String, Vec<Coord>>,
 ) -> Option<usize> {
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
     queue.push_back((src, 0));
     while let Some((cur, depth)) = queue.pop_front() {
+        if cur == dest {
+            return Some(depth);
+        }
         if visited.insert(cur) {
-            if cur == dest {
-                return Some(depth);
-            }
             let (x, y) = cur;
             for next in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
-                if let Some(k) = grid.get(&next) {
-                    match k {
-                        Kind::Wall => continue,
-                        Kind::Open => queue.push_back((next, depth + 1)),
-                        Kind::Portal(s) => {
-                            for &other in portals.get(s).unwrap() {
-                                if other != next {
-                                    queue.push_back((other, depth + 2))
-                                }
+                match &grid[next.0][next.1] {
+                    Kind::Open => queue.push_back((next, depth + 1)),
+                    Kind::Portal(s) => {
+                        for &other in portals.get(s).unwrap() {
+                            if other != next {
+                                queue.push_back((other, depth + 2))
+                            } else {
+                                queue.push_back((other, depth + 1))
                             }
-                            queue.push_back((next, depth + 1))
                         }
                     }
+                    _ => continue,
                 }
             }
         }
@@ -74,17 +73,22 @@ enum Kind {
     Wall,
     Open,
     Portal(String),
+    None,
 }
 
-fn parse_grid(input: &str) -> (HashMap<String, Vec<Coord>>, HashMap<Coord, Kind>) {
-    let raw: Vec<Vec<_>> = input.lines().map(|l| l.chars().collect()).collect();
-    let mut portals: HashMap<String, Vec<(i32, i32)>> = HashMap::new();
-    let mut grid = HashMap::new();
+fn parse_grid(input: &str) -> (HashMap<String, Vec<Coord>>, Vec<Vec<Kind>>) {
+    let raw: Vec<Vec<_>> = input
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.chars().collect())
+        .collect();
+    let mut portals: HashMap<String, Vec<Coord>> = HashMap::new();
+    let mut grid = vec![vec![Kind::None; raw[0].len()]; raw.len()];
 
     for (x, row) in raw.iter().enumerate() {
         for (y, &c) in row.iter().enumerate() {
             if c == '#' {
-                grid.insert((x as i32, y as i32), Kind::Wall);
+                grid[x][y] = Kind::Wall;
             } else if c == '.' {
                 // check 4 direction
                 let label = if is_label(raw[x - 1][y]) {
@@ -96,11 +100,11 @@ fn parse_grid(input: &str) -> (HashMap<String, Vec<Coord>>, HashMap<Coord, Kind>
                 } else if is_label(raw[x][y + 1]) {
                     label_to_hash(raw[x][y + 1], raw[x][y + 2])
                 } else {
-                    grid.insert((x as i32, y as i32), Kind::Open);
+                    grid[x][y] = Kind::Open;
                     continue;
                 };
-                grid.insert((x as i32, y as i32), Kind::Portal(label.clone()));
-                portals.entry(label).or_default().push((x as i32, y as i32));
+                grid[x][y] = Kind::Portal(label.clone());
+                portals.entry(label).or_default().push((x, y));
             }
         }
     }
