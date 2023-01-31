@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::error::Error;
-use std::hash::Hash;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::time::Instant;
@@ -34,31 +33,31 @@ fn part1(program: &[Int]) -> Result<usize> {
     Ok(count)
 }
 
-fn part2(program: &[Int]) -> Result<(Int, Int)> {
+fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    'found: for x in 1200..=1509 {
+    let mut result = 0;
+    'found: for x in 1300..=1509 {
         for y in 600..=773 {
             let p1 = (x + 99, y);
             let p2 = (x, y + 99);
             let p3 = (x + 99, y + 99);
             let binding = [(x, y), p1, p2, p3];
-            let count: Vec<_> = binding
+            if binding
                 .iter()
                 .filter(|&&(x, y)| test_coord(x, y, program))
-                .collect();
-            if count.len() == 4 {
-                println!("{:?} {}", (x, y), x * 10000 + y);
+                .count()
+                == 4
+            {
+                result = x * 10000 + y;
                 break 'found;
             }
         }
     }
 
-    let output = (0, 0);
-
-    writeln!(io::stdout(), "Part 2: {output:?}")?;
+    writeln!(io::stdout(), "Part 2: {result:?}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(output)
+    Ok(result)
 }
 
 fn test_coord(x: Int, y: Int, program: &[Int]) -> bool {
