@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -26,72 +26,47 @@ fn part1(portals: &HashMap<String, Vec<Coord>>, grid: &HashMap<Coord, Kind>) -> 
 
     let src = portals.get("AA").unwrap()[0];
     let dest = portals.get("ZZ").unwrap()[0];
-    let result = dfs(
-        src,
-        dest,
-        grid,
-        portals,
-        &mut HashMap::new(),
-        &mut HashSet::new(),
-    )
-    .unwrap();
+    let result = bfs(src, dest, grid, portals).unwrap();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn dfs(
+fn bfs(
     src: Coord,
     dest: Coord,
     grid: &HashMap<Coord, Kind>,
     portals: &HashMap<String, Vec<Coord>>,
-    cache: &mut HashMap<(Coord, Coord), Option<usize>>,
-    visited: &mut HashSet<Coord>,
 ) -> Option<usize> {
-    if let Some(&r) = cache.get(&(src, dest)) {
-        return r;
-    }
-    visited.insert(src);
-    if src == dest {
-        return Some(0);
-    }
-    let mut result = usize::MAX;
-    let (x, y) = src;
-    for next in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
-        if visited.insert(next) {
-            if let Some(k) = grid.get(&next) {
-                match k {
-                    Kind::Wall => continue,
-                    Kind::Open => {
-                        if let Some(d) = dfs(next, dest, grid, portals, cache, visited) {
-                            result = result.min(1 + d);
-                        }
-                    }
-                    Kind::Portal(s) => {
-                        for &other in portals.get(s).unwrap() {
-                            if visited.insert(other) && other != next {
-                                if let Some(d) = dfs(other, dest, grid, portals, cache, visited) {
-                                    result = result.min(2 + d);
+    let mut queue = VecDeque::new();
+    let mut visited = HashSet::new();
+    queue.push_back((src, 0));
+    while let Some((cur, depth)) = queue.pop_front() {
+        if visited.insert(cur) {
+            if cur == dest {
+                return Some(depth);
+            }
+            let (x, y) = cur;
+            for next in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+                if let Some(k) = grid.get(&next) {
+                    match k {
+                        Kind::Wall => continue,
+                        Kind::Open => queue.push_back((next, depth + 1)),
+                        Kind::Portal(s) => {
+                            for &other in portals.get(s).unwrap() {
+                                if other != next {
+                                    queue.push_back((other, depth + 2))
                                 }
                             }
-                        }
-
-                        if let Some(d) = dfs(next, dest, grid, portals, cache, visited) {
-                            result = result.min(1 + d);
+                            queue.push_back((next, depth + 1))
                         }
                     }
                 }
             }
         }
     }
-    let r = if result == usize::MAX {
-        None
-    } else {
-        Some(result)
-    };
-    cache.insert((src, dest), r);
-    r
+    None
 }
 
 #[derive(Debug, Clone)]
@@ -207,6 +182,5 @@ YN......#               VT..#....QG
            B   J   C               
            U   P   P               ";
     let (portals, grid) = parse_grid(input);
-    println!("{:?}", portals);
     assert_eq!(part1(&portals, &grid).unwrap(), 58);
 }
