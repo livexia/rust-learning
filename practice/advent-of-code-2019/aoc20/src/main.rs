@@ -54,27 +54,27 @@ fn bfs_with_level(
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
     queue.push_back((src, 0, 0));
-    while let Some((cur, depth, level)) = queue.pop_front() {
+    while let Some((cur, level, distance)) = queue.pop_front() {
         if cur == dest && level == 0 {
-            return Ok(depth);
+            return Ok(distance);
         }
         if visited.insert((cur, level)) {
             let (x, y) = cur;
             for next in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
                 match &grid[next.0][next.1] {
-                    Kind::Open => queue.push_back((next, depth + 1, level)),
+                    Kind::Open => (),
                     Kind::Portal(s) => {
                         for &other in portals.get(s).unwrap() {
-                            if other != next {
-                                let new_level =
-                                    next_level(next.0, next.1, level, grid.len(), grid[0].len());
-
-                                queue.push_back((other, depth + 2, new_level))
+                            let new_level =
+                                next_level(next.0, next.1, level, grid.len(), grid[0].len());
+                            if other != next && new_level != level {
+                                queue.push_back((other, new_level, distance + 2))
                             }
                         }
                     }
                     _ => continue,
                 }
+                queue.push_back((next, level, distance + 1))
             }
         }
     }
@@ -98,26 +98,25 @@ fn bfs(
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
     queue.push_back((src, 0));
-    while let Some((cur, depth)) = queue.pop_front() {
+    while let Some((cur, distance)) = queue.pop_front() {
         if cur == dest {
-            return Ok(depth);
+            return Ok(distance);
         }
         if visited.insert(cur) {
             let (x, y) = cur;
             for next in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
                 match &grid[next.0][next.1] {
-                    Kind::Open => queue.push_back((next, depth + 1)),
+                    Kind::Open => (),
                     Kind::Portal(s) => {
                         for &other in portals.get(s).unwrap() {
                             if other != next {
-                                queue.push_back((other, depth + 2))
-                            } else {
-                                queue.push_back((other, depth + 1))
+                                queue.push_back((other, distance + 2))
                             }
                         }
                     }
                     _ => continue,
                 }
+                queue.push_back((next, distance + 1))
             }
         }
     }
@@ -203,6 +202,7 @@ FG..#########.....#
              Z       ";
     let (portals, grid) = parse_grid(input);
     assert_eq!(part1(&portals, &grid).unwrap(), 23);
+    assert_eq!(part2(&portals, &grid).unwrap(), 26);
 
     let input = "
                    A               
@@ -284,5 +284,6 @@ RE....#.#                           #......RF
                A O F   N                     
                A A D   M                     ";
     let (portals, grid) = parse_grid(input);
+    assert_eq!(part1(&portals, &grid).unwrap(), 77);
     assert_eq!(part2(&portals, &grid).unwrap(), 396);
 }
