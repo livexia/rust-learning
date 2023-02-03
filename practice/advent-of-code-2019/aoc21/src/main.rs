@@ -26,6 +26,7 @@ fn part1(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
+    // https://old.reddit.com/r/adventofcode/comments/edll5a/2019_day_21_solutions/fbj67t1/
     let result = computer_run_command(
         &["NOT A J", "NOT C T", "OR T J", "AND D J", "WALK"],
         &mut computer,
@@ -39,11 +40,19 @@ fn part1(program: &[Int]) -> Result<Int> {
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    let output = 0;
+    let mut computer = Computer::new(program);
+    // https://old.reddit.com/r/adventofcode/comments/edll5a/2019_day_21_solutions/fbj67t1/
+    let result = computer_run_command(
+        &[
+            "NOT A J", "NOT B T", "OR T J", "NOT C T", "OR T J", "AND D J", "NOT E T", "NOT T T",
+            "OR H T", "AND T J", "RUN",
+        ],
+        &mut computer,
+    )?;
 
-    writeln!(io::stdout(), "Part 2: {output}")?;
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(output)
+    Ok(result)
 }
 
 fn computer_run_command(commands: &[&str], computer: &mut Computer) -> Result<Int> {
@@ -66,7 +75,8 @@ fn computer_run_command(commands: &[&str], computer: &mut Computer) -> Result<In
             s.push(c as u8 as char);
         }
     }
-    err!("{s}")
+    writeln!(io::stdout(), "{s}")?;
+    err!("Didn't make it across")
 }
 
 fn command(s: &str) -> Vec<Int> {
