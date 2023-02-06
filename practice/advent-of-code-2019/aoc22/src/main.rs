@@ -47,19 +47,22 @@ fn part2(techniques: &[Technique]) -> Result<usize> {
     let mut visited = HashMap::new();
     visited.insert(2020, 0);
     let mut loop_size = usize::MAX;
-    // for t in 0..times {
-    dest = rev_shuffle(dest, length, techniques);
-    let mut temp = [dest];
-    shuffle(&mut temp, length, techniques);
-    assert_eq!(temp[0], 2020);
-    // if visited.contains_key(&dest) {
-    //     loop_size = loop_size.min(t);
-    //     break;
-    // }
+    for t in 0..times {
+        dest = reverse_shuffle(dest, length, techniques);
+        // let mut temp = [dest];
+        // shuffle(&mut temp, length, techniques);
+        // assert_eq!(temp[0], 2020);
+        if visited.contains_key(&dest) {
+            loop_size = loop_size.min(t);
+            break;
+        }
+        if t % 100000 == 0 {
+            println!("{dest},{t}, {:?}", start.elapsed());
+        }
 
-    // visited.insert(dest, t);
-    // }
-    // dbg!(loop_size);
+        visited.insert(dest, t);
+    }
+    dbg!(loop_size);
 
     let result = 0;
 
@@ -68,19 +71,15 @@ fn part2(techniques: &[Technique]) -> Result<usize> {
     Ok(result)
 }
 
-fn rev_shuffle(mut dest: usize, length: usize, techniques: &[Technique]) -> usize {
+fn reverse_shuffle(mut dest: usize, length: usize, techniques: &[Technique]) -> usize {
     for t in techniques.iter().rev() {
         match t {
             Technique::DealNew => {
                 dest = length - 1 - dest;
             }
             Technique::Cut(n) => {
-                let offset = if n < &0 {
-                    n.unsigned_abs() as usize
-                } else {
-                    length - *n as usize
-                };
-                dest = (dest + length - offset) % length;
+                let offset = ((*n as i64).rem_euclid(length as i64)) as usize;
+                dest = (dest + offset) % length;
             }
             Technique::DealIncrement(n) => {
                 let n = *n as usize;
@@ -104,11 +103,7 @@ fn shuffle(deck: &mut [usize], length: usize, techniques: &[Technique]) {
                 }
             }
             Technique::Cut(n) => {
-                let offset = if n < &0 {
-                    n.unsigned_abs() as usize
-                } else {
-                    length - *n as usize
-                };
+                let offset = length - ((*n as i64).rem_euclid(length as i64)) as usize;
                 for i in deck.iter_mut() {
                     *i = (*i + offset) % length;
                 }
