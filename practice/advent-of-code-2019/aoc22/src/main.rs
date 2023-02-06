@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::str::FromStr;
@@ -22,9 +23,10 @@ fn main() -> Result<()> {
 fn part1(techniques: &[Technique]) -> Result<usize> {
     let start = Instant::now();
 
-    let deck = shuffle(10007, techniques, 1);
+    let mut deck = [2019];
+    shuffle(&mut deck, 10007, techniques);
 
-    let result = deck[2019];
+    let result = deck[0];
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -38,7 +40,26 @@ fn part2(techniques: &[Technique]) -> Result<usize> {
 
     // let v = vec![0; 119315717514047];
 
-    let deck = shuffle(10009, techniques, 101741582076661);
+    let length = 119315717514047;
+    let times: usize = 101741582076661;
+    let mut dest = 2020;
+
+    let mut visited = HashMap::new();
+    visited.insert(2020, 0);
+    let mut loop_size = usize::MAX;
+    // for t in 0..times {
+    dest = rev_shuffle(dest, length, techniques);
+    let mut temp = [dest];
+    shuffle(&mut temp, length, techniques);
+    assert_eq!(temp[0], 2020);
+    // if visited.contains_key(&dest) {
+    //     loop_size = loop_size.min(t);
+    //     break;
+    // }
+
+    // visited.insert(dest, t);
+    // }
+    // dbg!(loop_size);
 
     let result = 0;
 
@@ -47,66 +68,61 @@ fn part2(techniques: &[Technique]) -> Result<usize> {
     Ok(result)
 }
 
-fn shuffle(length: usize, techniques: &[Technique], times: usize) -> Vec<usize> {
-    let mut deck: Vec<_> = (0..length).collect(); // index: card number, value: card index
-
-    let mut visited = std::collections::HashMap::new();
-    let mut loop_size = usize::MAX;
-
-    for _i in 0..times {
-        for t in techniques {
-            match t {
-                Technique::DealNew => {
-                    for i in deck.iter_mut() {
-                        *i = length - 1 - *i;
-                    }
+fn rev_shuffle(mut dest: usize, length: usize, techniques: &[Technique]) -> usize {
+    for t in techniques.iter().rev() {
+        match t {
+            Technique::DealNew => {
+                dest = length - 1 - dest;
+            }
+            Technique::Cut(n) => {
+                let offset = if n < &0 {
+                    n.unsigned_abs() as usize
+                } else {
+                    length - *n as usize
+                };
+                dest = (dest + length - offset) % length;
+            }
+            Technique::DealIncrement(n) => {
+                let n = *n as usize;
+                let mut temp = dest;
+                while temp % n != 0 {
+                    temp += length;
                 }
-                Technique::Cut(n) => {
-                    let index = if n < &0 {
-                        length - n.abs() as usize
-                    } else {
-                        *n as usize
-                    };
-                    for i in 0..length {
-                        if deck[i] < index {
-                            deck[i] += length - index
-                        } else {
-                            deck[i] -= index
-                        }
-                    }
+                dest = (temp / n) % length;
+            }
+        }
+    }
+    dest
+}
+
+fn shuffle(deck: &mut [usize], length: usize, techniques: &[Technique]) {
+    for t in techniques {
+        match t {
+            Technique::DealNew => {
+                for i in deck.iter_mut() {
+                    *i = length - 1 - *i;
                 }
-                Technique::DealIncrement(n) => {
-                    for i in 0..length {
-                        deck[i] = (deck[i] * *n as usize) % length;
-                    }
+            }
+            Technique::Cut(n) => {
+                let offset = if n < &0 {
+                    n.unsigned_abs() as usize
+                } else {
+                    length - *n as usize
+                };
+                for i in deck.iter_mut() {
+                    *i = (*i + offset) % length;
+                }
+            }
+            Technique::DealIncrement(n) => {
+                for i in deck.iter_mut() {
+                    *i = (*i * *n as usize) % length;
                 }
             }
         }
-        // println!("{:?}", deck);
-        let v = deck.iter().position(|i| i == &5752).unwrap();
-        if let Some(prev) = visited.get(&v) {
-            println!("{}: {} {}, {}", v, prev, _i, _i - prev);
-            loop_size = _i - prev;
-            break;
-        }
-        visited.insert(v, _i);
     }
-    dbg!(visited.iter().find(|(_, &i)| i == times % loop_size));
-
-    deck
 }
 
-fn show_deck(deck: &[usize]) -> String {
-    let mut s = String::new();
-    let mut deck: Vec<(usize, &usize)> = deck.iter().enumerate().collect();
-    deck.sort_by_key(|(_, &i)| i);
-    for (i, _) in deck {
-        s.push_str(&format!("{i} "));
-    }
-
-    s.trim().to_string()
-}
-
+#[derive(Debug, Clone)]
 enum Technique {
     DealNew,
     Cut(i32),
@@ -139,50 +155,67 @@ fn paesr_input(input: &str) -> Result<Vec<Technique>> {
 
 #[test]
 fn example_input() {
+    fn part1_helper(length: usize, techniques: &[Technique]) -> Vec<usize> {
+        let mut deck: Vec<usize> = (0..length).collect();
+        shuffle(&mut deck, length, techniques);
+        deck
+    }
+
+    fn show_deck(deck: &[usize]) -> String {
+        let mut s = String::new();
+        let mut deck: Vec<(usize, &usize)> = deck.iter().enumerate().collect();
+        deck.sort_by_key(|(_, &i)| i);
+        for (i, _) in deck {
+            s.push_str(&format!("{i} "));
+        }
+
+        s.trim().to_string()
+    }
+
     let input = "deal with increment 7
     deal into new stack
     deal into new stack";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "0 3 6 9 2 5 8 1 4 7");
 
     let input = "deal into new stack";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "9 8 7 6 5 4 3 2 1 0");
 
     let input = "cut 3";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "3 4 5 6 7 8 9 0 1 2");
 
     let input = "cut -4";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "6 7 8 9 0 1 2 3 4 5");
 
     let input = "deal with increment 3";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "0 7 4 1 8 5 2 9 6 3");
 
     let input = "deal with increment 9";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "0 9 8 7 6 5 4 3 2 1");
 
     let input = "cut 6
     deal with increment 7
     deal into new stack";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "3 0 7 4 1 8 5 2 9 6");
 
     let input = "deal with increment 7
     deal with increment 9
     cut -2";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "6 3 0 7 4 1 8 5 2 9");
 
     let input = "deal into new stack
@@ -196,6 +229,6 @@ fn example_input() {
     deal with increment 3
     cut -1";
     let ts = paesr_input(input).unwrap();
-    let deck = shuffle(10, &ts, 1);
+    let deck = part1_helper(10, &ts);
     assert_eq!(&show_deck(&deck), "9 2 5 8 1 4 7 0 3 6");
 }
