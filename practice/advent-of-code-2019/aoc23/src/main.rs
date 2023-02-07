@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
@@ -29,16 +28,10 @@ fn part1(program: &[Int]) -> Result<Int> {
     let result;
 
     let mut computers = init_computers(50, program);
-    let mut queues: Vec<VecDeque<(Int, Int)>> = vec![VecDeque::new(); 50];
-    'outer: loop {
-        for (i, c) in computers.iter_mut().enumerate() {
-            c.run();
-
-            if let Some((_, y)) = send(c, &mut queues) {
-                result = y;
-                break 'outer;
-            };
-            recv(c, &mut queues[i]);
+    loop {
+        if let Some((_, y)) = communicate_computers(&mut computers) {
+            result = y;
+            break;
         }
     }
 
@@ -53,29 +46,19 @@ fn part2(program: &[Int]) -> Result<Int> {
     let result;
 
     let mut computers = init_computers(50, program);
-    let mut queues: Vec<VecDeque<(Int, Int)>> = vec![VecDeque::new(); 50];
     let mut nat = None;
     let mut last_y = None;
-    'outer: loop {
-        let mut idle = 0u64;
-        for (i, c) in computers.iter_mut().enumerate() {
-            c.run();
-
-            if let Some((x, y)) = send(c, &mut queues) {
-                nat = Some((x, y));
-            }
-            if !recv(c, &mut queues[i]) {
-                idle |= 1 << i;
-            } else {
-                idle &= !(1 << i);
-            };
+    loop {
+        if let Some((x, y)) = communicate_computers(&mut computers) {
+            nat = Some((x, y));
         }
-        if idle.count_ones() == 50 && queues.iter().all(|q| q.is_empty()) {
+        if computers.iter().all(|c| c.input.len() == 1) {
             if let Some((x, y)) = nat {
-                queues[0].push_back((x, y));
+                computers[0].input.push(y);
+                computers[0].input.push(x);
                 if last_y == Some(y) {
                     result = y;
-                    break 'outer;
+                    break;
                 }
                 last_y = Some(y);
             }
@@ -87,8 +70,21 @@ fn part2(program: &[Int]) -> Result<Int> {
     Ok(result)
 }
 
-fn send(computer: &mut Computer, queues: &mut [VecDeque<(Int, Int)>]) -> Option<(Int, Int)> {
-    let output = &mut computer.output;
+fn communicate_computers(computers: &mut [Computer]) -> Option<(Int, Int)> {
+    let mut nat = None;
+    for i in 0..computers.len() {
+        computers[i].run();
+
+        recv(&mut computers[i]);
+        if let Some((x, y)) = send(computers, i) {
+            nat = Some((x, y));
+        }
+    }
+    nat
+}
+
+fn send(computers: &mut [Computer], i: usize) -> Option<(Int, Int)> {
+    let output = &mut computers[i].output;
     while !output.is_empty() && output.len() % 3 == 0 {
         let (y, x, dest) = (
             output.pop().unwrap(),
@@ -96,7 +92,8 @@ fn send(computer: &mut Computer, queues: &mut [VecDeque<(Int, Int)>]) -> Option<
             output.pop().unwrap(),
         );
         if dest < 50 {
-            queues[dest as usize].push_back((x, y));
+            computers[dest as usize].input.push(y);
+            computers[dest as usize].input.push(x);
         } else if dest == 255 {
             return Some((x, y));
         }
@@ -104,17 +101,9 @@ fn send(computer: &mut Computer, queues: &mut [VecDeque<(Int, Int)>]) -> Option<
     None
 }
 
-fn recv(computer: &mut Computer, queue: &mut VecDeque<(Int, Int)>) -> bool {
-    while let Some((x, y)) = queue.pop_front() {
-        computer.add_input(x);
-        computer.run();
-        computer.add_input(y);
-    }
+fn recv(computer: &mut Computer) {
     if computer.input.is_empty() {
         computer.add_input(-1);
-        false
-    } else {
-        true
     }
 }
 
