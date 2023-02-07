@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::str::FromStr;
@@ -27,50 +26,92 @@ fn part1(techniques: &[Technique]) -> Result<usize> {
     shuffle(&mut deck, 10007, techniques);
 
     let result = deck[0];
+    let (offset, increment) = get_offset_and_increment(techniques, 10007);
+
+    assert_eq!(get_nth_card(result as i128, offset, increment, 10007), 2019);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn part2(techniques: &[Technique]) -> Result<usize> {
+// part 2 https://old.reddit.com/r/adventofcode/comments/ee0rqi/2019_day_22_solutions/fbnkaju/
+fn part2(techniques: &[Technique]) -> Result<i128> {
     let start = Instant::now();
 
-    // let deck = shuffle(119315717514047, techniques, 101741582076661);
-
-    // let v = vec![0; 119315717514047];
-
     let length = 119315717514047;
-    let times: usize = 101741582076661;
-    let mut dest = 2020;
+    let times = 101741582076661;
 
-    let mut visited = HashMap::new();
-    visited.insert(2020, 0);
-    let mut loop_size = usize::MAX;
-    for t in 0..times {
-        dest = reverse_shuffle(dest, length, techniques);
-        // let mut temp = [dest];
-        // shuffle(&mut temp, length, techniques);
-        // assert_eq!(temp[0], 2020);
-        if visited.contains_key(&dest) {
-            loop_size = loop_size.min(t);
-            break;
-        }
-        if t % 100000 == 0 {
-            println!("{dest},{t}, {:?}", start.elapsed());
-        }
+    let (offset_diff, increment_mul) = get_offset_and_increment(techniques, length);
+    let (offset, increment) = clac_for_iterations(times, offset_diff, increment_mul, length);
 
-        visited.insert(dest, t);
-    }
-    dbg!(loop_size);
-
-    let result = 0;
+    let result = get_nth_card(2020, offset, increment, length);
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
+fn get_nth_card(n: i128, offset: i128, increment: i128, length: i128) -> i128 {
+    (offset + increment * n).rem_euclid(length)
+}
+
+fn clac_for_iterations(
+    times: i128,
+    offset_diff: i128,
+    increment_mul: i128,
+    length: i128,
+) -> (i128, i128) {
+    let increment = modular_pow(increment_mul, times, length);
+    let offset = ((offset_diff * (1 - increment)).rem_euclid(length)
+        * inv((1 - increment_mul).rem_euclid(length), length))
+    .rem_euclid(length);
+    (offset, increment)
+}
+
+fn get_offset_and_increment(techniques: &[Technique], length: i128) -> (i128, i128) {
+    let (mut offset, mut increment): (i128, i128) = (0, 1);
+    for t in techniques {
+        match t {
+            Technique::DealNew => {
+                increment *= -1;
+                offset += increment;
+            }
+            Technique::Cut(n) => {
+                offset += *n as i128 * increment;
+            }
+            Technique::DealIncrement(n) => {
+                increment *= inv(*n as i128, length);
+            }
+        }
+        increment = increment.rem_euclid(length);
+        offset = offset.rem_euclid(length);
+    }
+    (offset, increment)
+}
+
+// https://en.wikipedia.org/wiki/Modular_exponentiation#Right-to-left_binary_method
+fn modular_pow(mut base: i128, mut exponent: i128, modulus: i128) -> i128 {
+    if modulus == 1 {
+        return 0;
+    }
+    let _ = (modulus - 1).checked_mul(modulus - 1);
+    let mut result = 1;
+    while exponent > 0 {
+        if exponent % 2 == 1 {
+            result = (result * base).rem_euclid(modulus);
+        }
+        exponent >>= 1;
+        base = (base * base).rem_euclid(modulus);
+    }
+    result
+}
+
+fn inv(n: i128, length: i128) -> i128 {
+    modular_pow(n, length - 2, length)
+}
+
+#[allow(dead_code)]
 fn reverse_shuffle(mut dest: usize, length: usize, techniques: &[Technique]) -> usize {
     for t in techniques.iter().rev() {
         match t {
@@ -78,7 +119,7 @@ fn reverse_shuffle(mut dest: usize, length: usize, techniques: &[Technique]) -> 
                 dest = length - 1 - dest;
             }
             Technique::Cut(n) => {
-                let offset = ((*n as i64).rem_euclid(length as i64)) as usize;
+                let offset = ((*n as i128).rem_euclid(length as i128)) as usize;
                 dest = (dest + offset) % length;
             }
             Technique::DealIncrement(n) => {
@@ -103,7 +144,7 @@ fn shuffle(deck: &mut [usize], length: usize, techniques: &[Technique]) {
                 }
             }
             Technique::Cut(n) => {
-                let offset = length - ((*n as i64).rem_euclid(length as i64)) as usize;
+                let offset = length - ((*n as i128).rem_euclid(length as i128)) as usize;
                 for i in deck.iter_mut() {
                     *i = (*i + offset) % length;
                 }
