@@ -34,7 +34,7 @@ fn part1(program: &[Int]) -> Result<Int> {
         for (i, c) in computers.iter_mut().enumerate() {
             c.run();
 
-            if let Some(y) = send(c, &mut queues) {
+            if let Some((_, y)) = send(c, &mut queues) {
                 result = y;
                 break 'outer;
             };
@@ -50,14 +50,44 @@ fn part1(program: &[Int]) -> Result<Int> {
 fn part2(program: &[Int]) -> Result<Int> {
     let start = Instant::now();
 
-    let output = 0;
+    let result;
 
-    writeln!(io::stdout(), "Part 2: {output}")?;
+    let mut computers = init_computers(50, program);
+    let mut queues: Vec<VecDeque<(Int, Int)>> = vec![VecDeque::new(); 50];
+    let mut nat = None;
+    let mut last_y = None;
+    'outer: loop {
+        let mut idle = 0u64;
+        for (i, c) in computers.iter_mut().enumerate() {
+            c.run();
+
+            if let Some((x, y)) = send(c, &mut queues) {
+                nat = Some((x, y));
+            }
+            if !recv(c, &mut queues[i]) {
+                idle |= 1 << i;
+            } else {
+                idle &= !(1 << i);
+            };
+        }
+        if idle.count_ones() == 50 && queues.iter().all(|q| q.is_empty()) {
+            if let Some((x, y)) = nat {
+                queues[0].push_back((x, y));
+                if last_y == Some(y) {
+                    result = y;
+                    break 'outer;
+                }
+                last_y = Some(y);
+            }
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(output)
+    Ok(result)
 }
 
-fn send(computer: &mut Computer, queues: &mut [VecDeque<(Int, Int)>]) -> Option<Int> {
+fn send(computer: &mut Computer, queues: &mut [VecDeque<(Int, Int)>]) -> Option<(Int, Int)> {
     let output = &mut computer.output;
     while !output.is_empty() && output.len() % 3 == 0 {
         let (y, x, dest) = (
@@ -68,13 +98,13 @@ fn send(computer: &mut Computer, queues: &mut [VecDeque<(Int, Int)>]) -> Option<
         if dest < 50 {
             queues[dest as usize].push_back((x, y));
         } else if dest == 255 {
-            return Some(y);
+            return Some((x, y));
         }
     }
     None
 }
 
-fn recv(computer: &mut Computer, queue: &mut VecDeque<(Int, Int)>) {
+fn recv(computer: &mut Computer, queue: &mut VecDeque<(Int, Int)>) -> bool {
     while let Some((x, y)) = queue.pop_front() {
         computer.add_input(x);
         computer.run();
@@ -82,6 +112,9 @@ fn recv(computer: &mut Computer, queue: &mut VecDeque<(Int, Int)>) {
     }
     if computer.input.is_empty() {
         computer.add_input(-1);
+        false
+    } else {
+        true
     }
 }
 
