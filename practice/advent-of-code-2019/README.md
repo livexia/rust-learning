@@ -8,3 +8,4 @@
     - https://github.com/mcpower/adventofcode/blob/501b66084b0060e0375fc3d78460fb549bc7dfab/2019/22/a-improved.py
     - https://en.wikipedia.org/wiki/Fermat%27s_little_theorem
     - https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
+- day 25 need come up a sloution for general input instead of hand search
