@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
@@ -21,7 +22,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(program: &[Int]) -> Result<Int> {
+fn part1(program: &[Int]) -> Result<()> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
@@ -84,6 +85,33 @@ fn part1(program: &[Int]) -> Result<Int> {
     println!("{}", run_command(&mut computer, "east"));
     println!("{}", run_command(&mut computer, "south"));
     // test weight
+    let items = vec![
+        "food ration",
+        "candy cane",
+        "mouse",
+        "mug",
+        "coin",
+        "ornament",
+        "semiconductor",
+        "mutex",
+    ];
+
+    'outer: for i in 0..8 {
+        for drop_items in items.iter().combinations(i) {
+            let mut c = computer.clone();
+            for item in &drop_items {
+                run_command(&mut c, &format!("drop {item}"));
+            }
+            let r = run_command(&mut c, "west");
+            if !r.contains("ejected back to the checkpoint") {
+                println!("{r}");
+                println!("drop items: {:?}", drop_items);
+
+                break 'outer;
+            }; // test weight
+        }
+    }
+    // dbg!(count);
     // println!("{}", run_command(&mut computer, "drop food ration"));
     // println!("{}", run_command(&mut computer, "drop candy cane"));
     // println!("{}", run_command(&mut computer, "drop mouse"));
@@ -93,7 +121,7 @@ fn part1(program: &[Int]) -> Result<Int> {
     // println!("{}", run_command(&mut computer, "drop semiconductor"));
     // println!("{}", run_command(&mut computer, "drop mutex"));
 
-    println!("{}", run_command(&mut computer, "west")); // test weight
+    // println!("{}", run_command(&mut computer, "west")); // test weight
 
     // println!("{}", run_command(&mut computer, "south")); // hull Breach -> Hot Chocolate Fountain
 
@@ -113,11 +141,9 @@ fn part1(program: &[Int]) -> Result<Int> {
     // println!("{}", run_command(&mut computer, "north")); // Crew Quarters -> Sick Bay
 
     // println!("{}", run_command(&mut computer, "inv"));
-    let output = 0;
 
-    writeln!(io::stdout(), "Part 1: {output}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(output)
+    Ok(())
 }
 
 fn run_command(computer: &mut Computer, command: &str) -> String {
@@ -145,6 +171,7 @@ fn show_output(output: &[Int]) -> String {
     s
 }
 
+#[derive(Debug, Clone)]
 struct Computer {
     program: Vec<Int>,
     pc: Addr,
