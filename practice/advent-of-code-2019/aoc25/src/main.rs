@@ -1,7 +1,8 @@
-use itertools::Itertools;
+use std::collections::HashSet;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
+use std::mem::swap;
 use std::time::Instant;
 
 #[allow(unused_macros)]
@@ -22,136 +23,155 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(program: &[Int]) -> Result<()> {
+fn part1(program: &[Int]) -> Result<i128> {
     let start = Instant::now();
 
     let mut computer = Computer::new(program);
     computer.run();
-    println!("{}", run_command(&mut computer, "north")); // hull breach go north
-    println!("{}", run_command(&mut computer, "take mug"));
+    let mut output = vec![];
+    swap(&mut output, &mut computer.output);
+    let output = output_to_string(&output);
+    let mut visited = HashSet::new();
+    let mut found_items = HashSet::new();
+    let result = dfs(&mut computer, output, &mut visited, &mut found_items).unwrap();
 
-    println!("{}", run_command(&mut computer, "north"));
-    println!("{}", run_command(&mut computer, "take food ration"));
-
-    println!("{}", run_command(&mut computer, "south"));
-    println!("{}", run_command(&mut computer, "east"));
-    println!("{}", run_command(&mut computer, "north"));
-    // println!("{}", run_command(&mut computer, "take photons")); // eaten by a Grue
-    println!("{}", run_command(&mut computer, "east"));
-    println!("{}", run_command(&mut computer, "take semiconductor"));
-
-    // println!("{}", run_command(&mut computer, "east"));
-    // println!("{}", run_command(&mut computer, "take escape pod")); // You're launched into space! Bye!
-
-    println!("{}", run_command(&mut computer, "west"));
-    println!("{}", run_command(&mut computer, "south"));
-    println!("{}", run_command(&mut computer, "west"));
-
-    println!("{}", run_command(&mut computer, "south")); // get hull breach
-    println!("{}", run_command(&mut computer, "south")); // hull breach go south
-
-    // println!("{}", run_command(&mut computer, "take giant electromagnet")); // You can't move
-    println!("{}", run_command(&mut computer, "east"));
-    println!("{}", run_command(&mut computer, "take mouse"));
-
-    println!("{}", run_command(&mut computer, "south")); // at Security Checkpoint
-
-    println!("{}", run_command(&mut computer, "north"));
-    println!("{}", run_command(&mut computer, "west"));
-    println!("{}", run_command(&mut computer, "north")); // back hull breach
-
-    println!("{}", run_command(&mut computer, "east")); // hull breach go east get Engineering
-    println!("{}", run_command(&mut computer, "take ornament"));
-
-    println!("{}", run_command(&mut computer, "north")); // Engineering -> Observatory
-    println!("{}", run_command(&mut computer, "take coin"));
-
-    println!("{}", run_command(&mut computer, "east")); // Observatory -> Stables
-    println!("{}", run_command(&mut computer, "take mutex"));
-
-    println!("{}", run_command(&mut computer, "west")); // Stables -> Observatory
-    println!("{}", run_command(&mut computer, "south")); // Observatory -> Engineering
-
-    println!("{}", run_command(&mut computer, "west")); // Engineering -> hull Breach
-
-    println!("{}", run_command(&mut computer, "east")); // hull Breach -> Engineering
-    println!("{}", run_command(&mut computer, "east")); // Engineering -> Warp Drive Maintenance
-    println!("{}", run_command(&mut computer, "take candy cane"));
-    println!("{}", run_command(&mut computer, "west"));
-    println!("{}", run_command(&mut computer, "west")); // back to hull breach
-
-    // hull breach to checkpoint
-    println!("{}", run_command(&mut computer, "south"));
-    println!("{}", run_command(&mut computer, "east"));
-    println!("{}", run_command(&mut computer, "south"));
-    // test weight
-    let items = vec![
-        "food ration",
-        "candy cane",
-        "mouse",
-        "mug",
-        "coin",
-        "ornament",
-        "semiconductor",
-        "mutex",
-    ];
-
-    'outer: for i in 0..8 {
-        for drop_items in items.iter().combinations(i) {
-            let mut c = computer.clone();
-            for item in &drop_items {
-                run_command(&mut c, &format!("drop {item}"));
-            }
-            let r = run_command(&mut c, "west");
-            if !r.contains("ejected back to the checkpoint") {
-                println!("{r}");
-                println!("drop items: {:?}", drop_items);
-
-                break 'outer;
-            }; // test weight
-        }
-    }
-    // dbg!(count);
-    // println!("{}", run_command(&mut computer, "drop food ration"));
-    // println!("{}", run_command(&mut computer, "drop candy cane"));
-    // println!("{}", run_command(&mut computer, "drop mouse"));
-    // println!("{}", run_command(&mut computer, "drop mug"));
-    // println!("{}", run_command(&mut computer, "drop coin"));
-    // println!("{}", run_command(&mut computer, "drop ornament"));
-    // println!("{}", run_command(&mut computer, "drop semiconductor"));
-    // println!("{}", run_command(&mut computer, "drop mutex"));
-
-    // println!("{}", run_command(&mut computer, "west")); // test weight
-
-    // println!("{}", run_command(&mut computer, "south")); // hull Breach -> Hot Chocolate Fountain
-
-    // println!("{}", run_command(&mut computer, "west")); // Hot Chocolate Fountain -> Hallway
-    // println!("{}", run_command(&mut computer, "north")); // Hallway -> Storage
-
-    // println!("{}", run_command(&mut computer, "take molten lava")); // melt
-
-    // println!("{}", run_command(&mut computer, "east")); // Hot Chocolate Fountain -> Corridor
-
-    // println!("{}", run_command(&mut computer, "north")); // hull Breach -> Crew Quarters
-
-    // println!("{}", run_command(&mut computer, "east")); // Crew Quarters -> Holodeck
-    // println!("{}", run_command(&mut computer, "north")); // Holodeck -> Kitchen
-    // println!("{}", run_command(&mut computer, "north")); // Kitchen -> Kitchen
-
-    // println!("{}", run_command(&mut computer, "north")); // Crew Quarters -> Sick Bay
-
-    // println!("{}", run_command(&mut computer, "inv"));
-
+    writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(())
+    Ok(result)
 }
 
-fn run_command(computer: &mut Computer, command: &str) -> String {
+fn dfs(
+    computer: &mut Computer,
+    output: String,
+    visited: &mut HashSet<(String, String)>,
+    found_items: &mut HashSet<String>,
+) -> Option<i128> {
+    let cur = cur_location(&output);
+    let leads = leads(&output);
+
+    if cur == "Pressure-Sensitive Floor" {
+        let entry_command = rev_dir(&leads[0]);
+        let r = run_command(computer, "inv").1;
+        let items = parse_inv(&r);
+        for i in 0..256 {
+            let mut c = computer.clone();
+            for (j, item) in items.iter().enumerate() {
+                if i & (1 << j) != 0 {
+                    run_command(&mut c, &format!("drop {item}"));
+                }
+            }
+            let (_, r) = run_command(&mut c, entry_command);
+            if !r.contains("you are ejected back to the checkpoint") {
+                return r.split(' ').find_map(|w| w.parse::<i128>().ok());
+            }
+        }
+    }
+    let items = items(&output);
+    for item in items {
+        if found_items.insert(item.clone()) {
+            if item == "infinite loop" {
+                continue;
+            }
+            let mut c = computer.clone();
+            let command = format!("take {item}");
+            let (status, _r) = run_command(&mut c, &command);
+            if !leads.is_empty() {
+                let (_, r) = run_command(&mut c, &leads[0]);
+                if r.contains("You can't move") {
+                    continue;
+                }
+            }
+            if status != 99 {
+                run_command(computer, &command);
+            }
+        }
+    }
+    for next in leads {
+        if visited.insert((cur.clone(), next.clone())) {
+            let (status, r) = run_command(computer, &next);
+            assert_ne!(status, 99);
+            if let Some(s) = dfs(computer, r, visited, found_items) {
+                return Some(s);
+            }
+            run_command(computer, rev_dir(&next));
+        }
+    }
+    None
+}
+
+fn rev_dir(dir: &str) -> &str {
+    match dir {
+        "north" => "south",
+        "south" => "north",
+        "east" => "west",
+        "west" => "east",
+        _ => unreachable!("dir: {dir}"),
+    }
+}
+
+fn parse_inv(output: &str) -> Vec<&str> {
+    let mut r = vec![];
+    for line in output.lines() {
+        if let Some(item) = line.trim().strip_prefix('-') {
+            r.push(item.trim());
+        }
+    }
+    r
+}
+
+fn cur_location(output: &str) -> String {
+    for line in output.lines() {
+        if let Some(line) = line.trim().strip_prefix("==") {
+            if let Some(cur) = line.trim().strip_suffix("==") {
+                return cur.trim().to_string();
+            }
+        }
+    }
+    unreachable!("{output}")
+}
+
+fn leads(output: &str) -> Vec<String> {
+    let mut r = vec![];
+    let mut flag = false;
+    for line in output.lines() {
+        if line.trim() == "Doors here lead:" {
+            flag = true;
+        } else if flag {
+            if let Some(m) = line.trim().strip_prefix('-') {
+                r.push(m.trim().to_string())
+            } else {
+                return r;
+            }
+        }
+    }
+
+    r
+}
+
+fn items(output: &str) -> Vec<String> {
+    let mut r = vec![];
+    let mut flag = false;
+    for line in output.lines() {
+        if line.trim() == "Items here:" {
+            flag = true;
+        } else if flag {
+            if let Some(m) = line.trim().strip_prefix('-') {
+                r.push(m.trim().to_string())
+            } else {
+                return r;
+            }
+        }
+    }
+
+    r
+}
+
+fn run_command(computer: &mut Computer, command: &str) -> (Int, String) {
     computer.input = command_to_input(command);
-    computer.run();
+    let status = computer.run();
     let mut output = vec![];
-    std::mem::swap(&mut output, &mut computer.output);
-    show_output(&output)
+    swap(&mut output, &mut computer.output);
+    (status, output_to_string(&output))
 }
 
 fn command_to_input(command: &str) -> Vec<Int> {
@@ -163,7 +183,7 @@ fn command_to_input(command: &str) -> Vec<Int> {
         .collect()
 }
 
-fn show_output(output: &[Int]) -> String {
+fn output_to_string(output: &[Int]) -> String {
     let mut s = String::new();
     for &i in output {
         s.push(i as u8 as char);
