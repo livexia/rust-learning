@@ -9,7 +9,8 @@ Crust of Rust是Jon Gjengset的一个直播系列，主要关注点在于Rust中
 包含补上的 Advent of Code 代码，以及其他的小练习
 
 - Advent of Code 2018
-- Advent of Code 2020 (ToDo)
+- Advent of Code 2020
+- Advent of Code 2019
 
 ## [Operating System development tutorials in Rust on the Raspberry Pi](./rust-raspberrypi-OS-tutorials-note/README.md)
 ### 目标
