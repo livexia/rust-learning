@@ -1,0 +1,63 @@
+#!/bin/sh
+
+if [ $# != 1 ]; then
+    echo "Usage: $(basename "$0") <day-number>" >&2
+    exit 1
+fi
+#if [ ! -d .git ]; then
+#    echo "must be run from root of advent-of-code repository" >&2
+#    exit 1
+#fi
+
+name="$(printf "aoc%02d" "$1")"
+cargo new --bin "$name"
+mkdir "$name/input"
+touch "$name/input/input.txt"
+
+# write template to source file
+cat >"$name/src/main.rs" <<EOM
+use std::error::Error;
+use std::io::{self, Read, Write};
+use std::time::Instant;
+
+macro_rules! err {
+    (\$(\$tt:tt)*) => { Err(Box::<dyn Error>::from(format!(\$(\$tt)*))) }
+}
+
+type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
+
+fn main() -> Result<()>{
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input)?;
+
+    // part1()?;
+    // part2()?;
+    Ok(())
+}
+
+fn part1() -> Result<()> {
+    let start = Instant::now();
+
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    todo!()
+}
+EOM
+
+# template
+# use std::error::Error;
+# use std::io::{self, Read, Write};
+
+# macro_rules! err {
+#     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) }
+# }
+
+# type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
+
+# fn main() -> Result<()>{
+#     let mut input = String::new();
+#     io::stdin().read_to_string(&mut input)?;
+
+#     // part1()?;
+#     // part2()?;
+#     Ok(())
+# }
