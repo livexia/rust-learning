@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -16,21 +17,58 @@ fn main() -> Result<()> {
     let num = parse_input(&input);
 
     part1(num)?;
-    // part2()?;
+    part2(num)?;
     Ok(())
 }
 
 fn part1(num: i32) -> Result<i32> {
     let start = Instant::now();
 
-    let result = dis(&num_to_dis(num), &(0, 0));
+    let result = dis(&num_to_coord(num), &(0, 0));
 
     writeln!(io::stdout(), "> Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn num_to_dis(num: i32) -> Coord {
+fn part2(num: i32) -> Result<i32> {
+    let start = Instant::now();
+
+    let mut result = 0;
+    let mut grid = HashMap::new();
+    grid.insert((0, 0), 1);
+    for i in 2.. {
+        let c = num_to_coord(i);
+        let n = adjacent(c)
+            .iter()
+            .fold(0, |s, c| s + grid.get(c).unwrap_or(&0));
+        if n > num {
+            result = n;
+            break;
+        }
+        grid.insert(c, n);
+    }
+
+    writeln!(io::stdout(), "> Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn adjacent(c: Coord) -> [Coord; 8] {
+    let (x, y) = c;
+    [
+        (x - 1, y),
+        (x - 1, y - 1),
+        (x - 1, y + 1),
+        (x, y - 1),
+        (x, y + 1),
+        (x + 1, y - 1),
+        (x + 1, y),
+        (x + 1, y + 1),
+    ]
+}
+
+fn num_to_coord(num: i32) -> Coord {
     let mut l = (num as f64).sqrt() as i32;
     if l % 2 == 0 {
         l -= 1;
