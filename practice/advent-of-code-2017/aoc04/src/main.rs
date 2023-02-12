@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let list = parse_input(&input);
 
     part1(&list)?;
-    // part2()?;
+    part2(&list)?;
     Ok(())
 }
 
@@ -30,9 +30,30 @@ fn part1(list: &[Vec<&str>]) -> Result<usize> {
     Ok(result)
 }
 
+fn part2(list: &[Vec<&str>]) -> Result<usize> {
+    let start = Instant::now();
+
+    let result = list
+        .iter()
+        .map(|r| verify_hash(&(r.iter().map(|w| word_to_hash(w)).collect::<Vec<u32>>())))
+        .filter(|&b| b)
+        .count();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
 fn verify(password: &[&str]) -> bool {
-    let set: HashSet<_> = password.iter().collect();
-    set.len() == password.len()
+    password.iter().collect::<HashSet<_>>().len() == password.len()
+}
+
+fn verify_hash(hashes: &[u32]) -> bool {
+    hashes.iter().collect::<HashSet<_>>().len() == hashes.len()
+}
+
+fn word_to_hash(w: &str) -> u32 {
+    w.bytes().fold(0, |h, b| h | (1 << (b - b'a')))
 }
 
 fn parse_input(input: &str) -> Vec<Vec<&str>> {
