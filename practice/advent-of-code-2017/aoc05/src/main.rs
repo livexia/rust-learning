@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let instrs = parse_input(&input);
 
     part1(&instrs)?;
-    // part2()?;
+    part2(&instrs)?;
     Ok(())
 }
 
@@ -42,6 +42,33 @@ fn part1(instrs: &[i32]) -> Result<i32> {
     Ok(step)
 }
 
+fn part2(instrs: &[i32]) -> Result<i32> {
+    let start = Instant::now();
+
+    let mut instrs = instrs.to_owned();
+    let mut step = 0;
+
+    let mut cur = 0;
+
+    while cur < instrs.len() {
+        let next = cur as i32 + instrs[cur];
+        if next < 0 {
+            break;
+        }
+        if instrs[cur] >= 3 {
+            instrs[cur] -= 1;
+        } else {
+            instrs[cur] += 1;
+        }
+        cur = next as usize;
+        step += 1;
+    }
+
+    writeln!(io::stdout(), "Part 2: {step}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(step)
+}
+
 fn parse_input(input: &str) -> Vec<i32> {
     input
         .lines()
@@ -59,4 +86,5 @@ fn example_input() {
         -3";
     let instrs = parse_input(input);
     assert_eq!(part1(&instrs).unwrap(), 5);
+    assert_eq!(part2(&instrs).unwrap(), 10);
 }
