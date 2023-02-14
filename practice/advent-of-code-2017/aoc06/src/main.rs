@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let memory = parse_input(&input);
 
     part1(&memory)?;
-    // part2()?;
+    part2(&memory)?;
     Ok(())
 }
 
@@ -33,6 +33,29 @@ fn part1(memory: &[usize]) -> Result<usize> {
     }
 
     writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(memory: &[usize]) -> Result<usize> {
+    let start = Instant::now();
+
+    let mut memory = memory.to_owned();
+    let result;
+
+    let mut last_seen: HashMap<Vec<usize>, usize> = HashMap::new();
+    let mut cur = 0;
+    loop {
+        cur += 1;
+        if let Some(last) = last_seen.get(&memory) {
+            result = cur - *last;
+            break;
+        }
+        last_seen.insert(memory.clone(), cur);
+        reallocation(&mut memory);
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
@@ -71,4 +94,5 @@ fn parse_input(input: &str) -> Vec<usize> {
 fn example_input() {
     let input = "0 2 7 0";
     assert_eq!(part1(&parse_input(input)).unwrap(), 5);
+    assert_eq!(part2(&parse_input(input)).unwrap(), 4);
 }
