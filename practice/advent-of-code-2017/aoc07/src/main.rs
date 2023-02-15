@@ -10,7 +10,7 @@ macro_rules! err {
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
 type Index<'a> = HashMap<&'a str, usize>;
-type Weight = Vec<usize>;
+type Weight = Vec<i32>;
 type Connect = Vec<Vec<usize>>;
 
 fn main() -> Result<()> {
@@ -20,13 +20,66 @@ fn main() -> Result<()> {
     let (index, weights, connect) = parse_input(&input);
 
     part1(&index, &weights, &connect)?;
-    // part2()?;
+    part2(&index, &weights, &connect)?;
     Ok(())
 }
 
 fn part1<'a>(index: &Index<'a>, weights: &Weight, connect: &Connect) -> Result<&'a str> {
     let start = Instant::now();
 
+    let id = get_root(weights, connect);
+    let result = index.iter().find(|(_, &i)| i == id).unwrap().0;
+
+    writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(_index: &Index<'_>, weights: &Weight, connect: &Connect) -> Result<i32> {
+    let start = Instant::now();
+
+    let id = get_root(weights, connect);
+    let result = dfs(id, weights, connect).unwrap_err();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn dfs(id: usize, weights: &Weight, connect: &Connect) -> std::result::Result<i32, i32> {
+    let mut r = vec![];
+    for &n in &connect[id] {
+        match dfs(n, weights, connect) {
+            Ok(w) => r.push((n, w)),
+            Err(w) => return Err(w),
+        }
+    }
+    if let Some((id, d)) = find_difference(&r) {
+        Err(weights[id] + d)
+    } else {
+        Ok(r.iter().map(|(_, i)| i).sum::<i32>() + weights[id])
+    }
+}
+
+fn find_difference(r: &[(usize, i32)]) -> Option<(usize, i32)> {
+    if r.len() < 3 {
+        None
+    } else {
+        if r.iter().map(|(_, i)| i).sum::<i32>() == r[0].1 * r.len() as i32 {
+            return None;
+        }
+        let mut w_count = HashMap::new();
+        for (_, w) in r.iter() {
+            *w_count.entry(w).or_insert(0) += 1;
+        }
+        let &&w = w_count.iter().find(|(_, &c)| c == 1).unwrap().0;
+        let i = r.iter().find(|&&(_, x)| x == w).unwrap().0;
+        let o_w = r.iter().find(|&&(_, x)| x != w).unwrap().1;
+        Some((i, o_w - w))
+    }
+}
+
+fn get_root(weights: &Weight, connect: &Connect) -> usize {
     let mut adjacent: Vec<_> = (0..weights.len()).collect();
     for (i, next) in connect.iter().enumerate() {
         for &j in next {
@@ -38,13 +91,7 @@ fn part1<'a>(index: &Index<'a>, weights: &Weight, connect: &Connect) -> Result<&
         adjacent[0] = adjacent[adjacent[0]];
     }
 
-    let id = adjacent[0];
-
-    let result = index.iter().find(|(_, &i)| i == id).unwrap().0;
-
-    writeln!(io::stdout(), "Part 1: {result}")?;
-    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    Ok(result)
+    adjacent[0]
 }
 
 fn parse_input(input: &str) -> (Index, Weight, Connect) {
@@ -78,36 +125,40 @@ fn parse_input(input: &str) -> (Index, Weight, Connect) {
         if line.trim().is_empty() {
             continue;
         }
-        if let Some((left, right)) = line.trim().split_once(" -> ") {
-            let (name, weight) = if let Some((name, weight)) = left.trim().split_once(' ') {
-                (
-                    name.trim(),
-                    weight
-                        .trim_matches('(')
-                        .trim_matches(')')
-                        .trim()
-                        .parse()
-                        .unwrap(),
-                )
-            } else {
-                unreachable!()
-            };
+        let (left, right) = if let Some((left, right)) = line.trim().split_once(" -> ") {
+            (left, right)
+        } else {
+            (line.trim(), "")
+        };
+        let (name, weight) = if let Some((name, weight)) = left.trim().split_once(' ') {
+            (
+                name.trim(),
+                weight
+                    .trim_matches('(')
+                    .trim_matches(')')
+                    .trim()
+                    .parse()
+                    .unwrap(),
+            )
+        } else {
+            unreachable!()
+        };
 
-            let id = get_id(name, &mut index, &mut last_id, &mut connect, &mut weights);
-            weights[id] = weight;
-            connect[id] = right
-                .split(',')
-                .map(|w| {
-                    get_id(
-                        w.trim(),
-                        &mut index,
-                        &mut last_id,
-                        &mut connect,
-                        &mut weights,
-                    )
-                })
-                .collect();
-        }
+        let id = get_id(name, &mut index, &mut last_id, &mut connect, &mut weights);
+        weights[id] = weight;
+        connect[id] = right
+            .split(',')
+            .filter(|w| !w.trim().is_empty())
+            .map(|w| {
+                get_id(
+                    w.trim(),
+                    &mut index,
+                    &mut last_id,
+                    &mut connect,
+                    &mut weights,
+                )
+            })
+            .collect();
     }
     (index, weights, connect)
 }
@@ -128,5 +179,6 @@ fn exmaple_input() {
         gyxo (61)
         cntj (57)";
     let (index, weights, connect) = parse_input(input);
-    part1(&index, &weights, &connect).unwrap();
+    assert_eq!("tknk", part1(&index, &weights, &connect).unwrap());
+    assert_eq!(60, part2(&index, &weights, &connect).unwrap());
 }
