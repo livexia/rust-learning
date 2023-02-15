@@ -50,31 +50,31 @@ fn dfs(id: usize, weights: &Weight, connect: &Connect) -> std::result::Result<i3
     let mut r = vec![];
     for &n in &connect[id] {
         match dfs(n, weights, connect) {
-            Ok(w) => r.push((n, w)),
+            Ok(w) => r.push(w),
             Err(w) => return Err(w),
         }
     }
-    if let Some((id, d)) = find_difference(&r) {
-        Err(weights[id] + d)
+    if let Some((i, d)) = find_difference(&r) {
+        Err(weights[connect[id][i]] + d)
     } else {
-        Ok(r.iter().map(|(_, i)| i).sum::<i32>() + weights[id])
+        Ok(r.iter().sum::<i32>() + weights[id])
     }
 }
 
-fn find_difference(r: &[(usize, i32)]) -> Option<(usize, i32)> {
+fn find_difference(r: &[i32]) -> Option<(usize, i32)> {
     if r.len() < 3 {
         None
     } else {
-        if r.iter().map(|(_, i)| i).sum::<i32>() == r[0].1 * r.len() as i32 {
+        if r.iter().sum::<i32>() == r[0] * r.len() as i32 {
             return None;
         }
         let mut w_count = HashMap::new();
-        for (_, w) in r.iter() {
+        for w in r.iter() {
             *w_count.entry(w).or_insert(0) += 1;
         }
         let &&w = w_count.iter().find(|(_, &c)| c == 1).unwrap().0;
-        let i = r.iter().find(|&&(_, x)| x == w).unwrap().0;
-        let o_w = r.iter().find(|&&(_, x)| x != w).unwrap().1;
+        let i = r.iter().position(|&x| x == w).unwrap();
+        let o_w = r.iter().find(|&&x| x != w).unwrap();
         Some((i, o_w - w))
     }
 }
