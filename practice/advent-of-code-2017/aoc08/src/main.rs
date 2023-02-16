@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let instrs = parse_input(&input)?;
 
     part1(&instrs)?;
-    // part2()?;
+    part2(&instrs)?;
     Ok(())
 }
 
@@ -33,6 +33,24 @@ fn part1(instrs: &[Instr]) -> Result<i32> {
 
     let result = *registers.values().max().unwrap();
     writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(instrs: &[Instr]) -> Result<i32> {
+    let start = Instant::now();
+
+    let mut registers: HashMap<&str, i32> = HashMap::new();
+
+    let mut result = i32::MIN;
+    for (v1, v2, f) in instrs {
+        let &v2 = registers.get(v2).unwrap_or(&0);
+        let v1 = registers.entry(v1).or_insert(0);
+        *v1 = f(*v1, v2);
+        result = result.max(*v1);
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
@@ -88,4 +106,5 @@ fn example_input() {
         c inc -20 if c == 10";
     let instrs = parse_input(input).unwrap();
     assert_eq!(part1(&instrs).unwrap(), 1);
+    assert_eq!(part2(&instrs).unwrap(), 10);
 }
