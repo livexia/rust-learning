@@ -23,7 +23,7 @@ fn part1(stream: &Stream) -> Result<usize> {
     let start = Instant::now();
 
     println!("{:?}", stream);
-    let result = 1 + stream.get_score(1);
+    let result = stream.get_score(1);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -47,12 +47,9 @@ impl Stream {
         }
     }
 
-    fn get_score(&self, outer_score: usize) -> usize {
+    fn get_score(&self, level: usize) -> usize {
         match self {
-            Stream::Group(v) => v
-                .iter()
-                .map(|k| k.get_score(outer_score + 1) + outer_score)
-                .sum::<usize>(),
+            Stream::Group(v) => level + v.iter().map(|k| k.get_score(level + 1)).sum::<usize>(),
             Stream::Garbage(_) => 0,
         }
     }
@@ -97,7 +94,7 @@ impl Stream {
                 break;
             }
         }
-        Stream::Garbage(input.drain(index..).collect())
+        Stream::Garbage(input.drain(index + 1..).collect())
     }
 }
 
@@ -110,4 +107,20 @@ fn parse_input(input: &str) -> Option<Stream> {
 fn example_input() {
     let input = "{{<a!>},{<a!>},{<a!>},{<ab>}}";
     assert_eq!(part1(&parse_input(input).unwrap()).unwrap(), 3);
+    assert_eq!(
+        part1(&parse_input("{{<!!>},{<!!>},{<!!>},{<!!>}}").unwrap()).unwrap(),
+        9
+    );
+    assert_eq!(
+        part1(&parse_input("{{<ab>},{<ab>},{<ab>},{<ab>}}").unwrap()).unwrap(),
+        9
+    );
+    assert_eq!(
+        part1(&parse_input("{<a>,<a>,<a>,<a>}").unwrap()).unwrap(),
+        1
+    );
+    assert_eq!(part1(&parse_input("{{{},{},{{}}}}").unwrap()).unwrap(), 16);
+    assert_eq!(part1(&parse_input("{{},{}}").unwrap()).unwrap(), 5);
+    assert_eq!(part1(&parse_input("{{{}}}").unwrap()).unwrap(), 6);
+    assert_eq!(part1(&parse_input("{}").unwrap()).unwrap(), 1);
 }
