@@ -22,7 +22,6 @@ fn main() -> Result<()> {
 fn part1(stream: &Stream) -> Result<usize> {
     let start = Instant::now();
 
-    println!("{:?}", stream);
     let result = stream.get_score(1);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
@@ -59,11 +58,11 @@ impl Stream {
         let mut count = 0;
         while let Some(c) = input.pop() {
             match c {
-                '}' => {
+                '{' => {
                     count += 1;
                     stack.push(Stream::new_group());
                 }
-                '{' => {
+                '}' => {
                     count -= 1;
                     if count != 0 {
                         if let Some(inner) = stack.pop() {
@@ -73,7 +72,7 @@ impl Stream {
                         }
                     }
                 }
-                '>' => {
+                '<' => {
                     if let Some(r) = stack.last_mut() {
                         r.add_stream(Stream::from_vec_to_grabage(input))
                     }
@@ -87,19 +86,26 @@ impl Stream {
     }
 
     fn from_vec_to_grabage(input: &mut Vec<char>) -> Stream {
-        let mut index = 0;
-        for (i, &c) in input.iter().enumerate() {
-            if c == '<' {
-                index = i;
-                break;
+        let mut r = vec![];
+        let mut flag = false;
+        while let Some(c) = input.pop() {
+            r.push(c);
+            if flag {
+                flag = false;
+                continue;
+            }
+            match c {
+                '!' => flag = true,
+                '>' => return Stream::Garbage(r),
+                _ => flag = false,
             }
         }
-        Stream::Garbage(input.drain(index + 1..).collect())
+        Stream::Garbage(r)
     }
 }
 
 fn parse_input(input: &str) -> Option<Stream> {
-    let mut input = input.chars().collect();
+    let mut input = input.chars().rev().collect();
     Stream::from_vec(&mut input)
 }
 
