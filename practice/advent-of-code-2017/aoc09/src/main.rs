@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let stream = parse_input(&input).unwrap();
 
     part1(&stream)?;
-    // part2()?;
+    part2(&stream)?;
     Ok(())
 }
 
@@ -29,10 +29,20 @@ fn part1(stream: &Stream) -> Result<usize> {
     Ok(result)
 }
 
+fn part2(stream: &Stream) -> Result<usize> {
+    let start = Instant::now();
+
+    let result = stream.get_char_count();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
 #[derive(Debug)]
 enum Stream {
     Group(Vec<Stream>),
-    Garbage(Vec<char>),
+    Garbage(usize),
 }
 
 impl Stream {
@@ -50,6 +60,13 @@ impl Stream {
         match self {
             Stream::Group(v) => level + v.iter().map(|k| k.get_score(level + 1)).sum::<usize>(),
             Stream::Garbage(_) => 0,
+        }
+    }
+
+    fn get_char_count(&self) -> usize {
+        match self {
+            Stream::Group(v) => v.iter().map(|k| k.get_char_count()).sum(),
+            Stream::Garbage(c) => *c,
         }
     }
 
@@ -86,21 +103,20 @@ impl Stream {
     }
 
     fn from_vec_to_grabage(input: &mut Vec<char>) -> Stream {
-        let mut r = vec![];
+        let mut count = 0;
         let mut flag = false;
         while let Some(c) = input.pop() {
-            r.push(c);
             if flag {
                 flag = false;
                 continue;
             }
             match c {
                 '!' => flag = true,
-                '>' => return Stream::Garbage(r),
-                _ => flag = false,
+                '>' => return Stream::Garbage(count),
+                _ => count += 1,
             }
         }
-        Stream::Garbage(r)
+        Stream::Garbage(count)
     }
 }
 
@@ -129,4 +145,8 @@ fn example_input() {
     assert_eq!(part1(&parse_input("{{},{}}").unwrap()).unwrap(), 5);
     assert_eq!(part1(&parse_input("{{{}}}").unwrap()).unwrap(), 6);
     assert_eq!(part1(&parse_input("{}").unwrap()).unwrap(), 1);
+    assert_eq!(
+        part2(&parse_input("{<{o\"i!a,<{i<a>}").unwrap()).unwrap(),
+        10
+    );
 }
