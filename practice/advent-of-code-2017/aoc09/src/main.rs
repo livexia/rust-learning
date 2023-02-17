@@ -22,13 +22,15 @@ fn main() -> Result<()> {
 fn part1(stream: &Stream) -> Result<usize> {
     let start = Instant::now();
 
-    let result = stream.get_score();
+    println!("{:?}", stream);
+    let result = 1 + stream.get_score(1);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
+#[derive(Debug)]
 enum Stream {
     Group(Vec<Stream>),
     Garbage(Vec<char>),
@@ -45,22 +47,46 @@ impl Stream {
         }
     }
 
-    fn get_score(&self) -> usize {
+    fn get_score(&self, outer_score: usize) -> usize {
         match self {
-            Stream::Group(v) => v.iter().map(|k| k.get_score()).sum(),
+            Stream::Group(v) => v
+                .iter()
+                .map(|k| k.get_score(outer_score + 1) + outer_score)
+                .sum::<usize>(),
             Stream::Garbage(_) => 0,
         }
     }
 
     fn from_vec(input: &mut Vec<char>) -> Option<Stream> {
-        if let Some(c) = input.pop() {
+        let mut stack = vec![];
+        let mut count = 0;
+        while let Some(c) = input.pop() {
             match c {
-                '}' => Some(Stream::from_vec_to_group(input)),
-                '>' => Some(Stream::from_vec_to_grabage(input)),
-                _ => None,
+                '}' => {
+                    count += 1;
+                    stack.push(Stream::new_group());
+                }
+                '{' => {
+                    count -= 1;
+                    if count != 0 {
+                        if let Some(inner) = stack.pop() {
+                            if let Some(outer) = stack.last_mut() {
+                                outer.add_stream(inner);
+                            }
+                        }
+                    }
+                }
+                '>' => {
+                    if let Some(r) = stack.last_mut() {
+                        r.add_stream(Stream::from_vec_to_grabage(input))
+                    }
+                }
+                _ => (),
             };
         }
-        None
+        assert_eq!(count, 0);
+        assert_eq!(stack.len(), 1);
+        stack.pop()
     }
 
     fn from_vec_to_grabage(input: &mut Vec<char>) -> Stream {
@@ -72,15 +98,6 @@ impl Stream {
             }
         }
         Stream::Garbage(input.drain(index..).collect())
-    }
-
-    fn from_vec_to_group(input: &mut Vec<char>) -> Stream {
-        input.pop();
-        let mut g = Stream::new_group();
-        if let Some(s) = Stream::from_vec(input) {
-            g.add_stream(s);
-        }
-        g
     }
 }
 
