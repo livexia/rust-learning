@@ -15,68 +15,48 @@ fn main() -> Result<()> {
     let dirs = parse_input(&input);
 
     part1(&dirs)?;
-    // part2()?;
+    part2(&dirs)?;
     Ok(())
 }
 
 fn part1(dirs: &[&str]) -> Result<i32> {
     let start = Instant::now();
 
-    let mut cur = (Dis::H(0), Dis::V(0));
+    let (mut x, mut y) = (0, 0);
     for dir in dirs {
-        cur = next(cur.0, cur.1, dir);
+        (x, y) = next(x, y, dir);
     }
-    let (b, a) = cur.0.dis(&cur.1);
 
-    let result = b / 3 + (a - b / 3) / 2;
+    let result = x.abs() / 3 + (y.abs() - x.abs() / 3) / 2;
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-#[derive(Clone, Copy, Debug)]
-enum Dis {
-    H(i32),
-    V(i32),
+fn part2(dirs: &[&str]) -> Result<i32> {
+    let start = Instant::now();
+
+    let (mut x, mut y) = (0, 0);
+    let mut result = 0;
+    for dir in dirs {
+        (x, y) = next(x, y, dir);
+        result = result.max(x.abs() / 3 + (y.abs() - x.abs() / 3) / 2);
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
 }
 
-impl Dis {
-    fn add_h(self, i: i32) -> Self {
-        match self {
-            Dis::H(a) => Dis::H(a + i),
-            _ => self,
-        }
-    }
-
-    fn add_v(self, i: i32) -> Self {
-        match self {
-            Dis::V(b) => Dis::V(b + i),
-            _ => self,
-        }
-    }
-
-    fn dis(&self, &other: &Dis) -> (i32, i32) {
-        let a = match self {
-            Dis::H(a) => a,
-            Dis::V(b) => b,
-        };
-        let b = match other {
-            Dis::H(a) => a,
-            Dis::V(b) => b,
-        };
-        (a.abs(), b.abs())
-    }
-}
-
-fn next(x: Dis, y: Dis, dir: &str) -> (Dis, Dis) {
+fn next(x: i32, y: i32, dir: &str) -> (i32, i32) {
     match dir {
-        "n" => (x, y.add_v(2)),
-        "ne" => (x.add_h(3), y.add_v(1)),
-        "se" => (x.add_h(3), y.add_v(-1)),
-        "s" => (x, y.add_v(-2)),
-        "sw" => (x.add_h(-3), y.add_v(-1)),
-        "nw" => (x.add_h(-3), y.add_v(1)),
+        "n" => (x, y + 2),
+        "ne" => (x + 3, y + 1),
+        "se" => (x + 3, y - 1),
+        "s" => (x, y + -2),
+        "sw" => (x - 3, y - 1),
+        "nw" => (x - 3, y + 1),
         _ => unreachable!("wrong dir: {dir}"),
     }
 }
