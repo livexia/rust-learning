@@ -45,13 +45,13 @@ fn part1(edges: &[(usize, usize)]) -> Result<usize> {
 fn union(v1: usize, v2: usize, sets: &mut [usize], sizes: &mut [usize]) {
     let root1 = find(v1, sets);
     let root2 = find(v2, sets);
-    let (root1, root2, v2) = if sizes[root1] < sizes[root2] {
-        (root2, root1, v1)
+    let (root1, root2) = if sizes[root1] < sizes[root2] {
+        (root2, root1)
     } else {
-        (root1, root2, v2)
+        (root1, root2)
     };
     if root1 != root2 {
-        sets[v2] = root1;
+        sets[root2] = root1;
         sizes[root1] += sizes[root2]
     }
 }
