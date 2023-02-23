@@ -31,7 +31,6 @@ fn part1(edges: &[(usize, usize)]) -> Result<usize> {
     }
 
     let zero = find(0, &mut sets);
-    dbg!(zero);
     let result = sets
         .clone()
         .iter()
@@ -57,7 +56,7 @@ fn part2(edges: &[(usize, usize)]) -> Result<usize> {
         .clone()
         .iter()
         .map(|&v| find(v, &mut sets))
-        .collect::<HashSet<usize>>()
+        .collect::<HashSet<_>>()
         .len();
 
     writeln!(io::stdout(), "Part 2: {result}")?;
