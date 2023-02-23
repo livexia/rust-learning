@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -15,7 +16,7 @@ fn main() -> Result<()> {
     let edges = parse_input(&input);
 
     part1(&edges)?;
-    // part2()?;
+    part2(&edges)?;
     Ok(())
 }
 
@@ -38,6 +39,28 @@ fn part1(edges: &[(usize, usize)]) -> Result<usize> {
         .count();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(edges: &[(usize, usize)]) -> Result<usize> {
+    let start = Instant::now();
+
+    let &length = edges.iter().map(|(a, b)| a.max(b)).max().unwrap();
+    let mut sets: Vec<_> = (0..=length).collect();
+    let mut sizes: Vec<_> = vec![1; length + 1];
+    for &(v1, v2) in edges {
+        union(v1, v2, &mut sets, &mut sizes);
+    }
+
+    let result = sets
+        .clone()
+        .iter()
+        .map(|&v| find(v, &mut sets))
+        .collect::<HashSet<usize>>()
+        .len();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
@@ -91,4 +114,5 @@ fn example_input() {
         6 <-> 4, 5";
     let edges = parse_input(input);
     assert_eq!(part1(&edges).unwrap(), 6);
+    assert_eq!(part2(&edges).unwrap(), 2);
 }
