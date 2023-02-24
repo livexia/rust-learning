@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -39,9 +38,8 @@ fn part1(firewall: &[usize]) -> Result<usize> {
 fn part2(firewall: &[usize]) -> Result<usize> {
     let start = Instant::now();
 
-    let result = (0..1000000000)
-        .into_par_iter()
-        .find_first(|delay| {
+    let result = (0..)
+        .find(|delay| {
             firewall
                 .iter()
                 .enumerate()
