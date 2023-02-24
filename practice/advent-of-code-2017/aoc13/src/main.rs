@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use rayon::prelude::*;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -20,84 +20,42 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn part1(firewall: &[Layer]) -> Result<usize> {
+fn part1(firewall: &[usize]) -> Result<usize> {
     let start = Instant::now();
 
-    let firewall = init_firewall(firewall);
-    let result = firewall.iter().enumerate().fold(0, |s, (i, l)| {
-        s + if l.scanner_dis() == 0 { i * l.depth } else { 0 }
-    });
+    let result = firewall
+        .iter()
+        .enumerate()
+        .filter(|(_, &d)| d != 0)
+        .fold(0, |s, (i, d)| {
+            s + if i % (2 * d - 2) == 0 { i * d } else { 0 }
+        });
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn part2(firewall: &[Layer]) -> Result<usize> {
+fn part2(firewall: &[usize]) -> Result<usize> {
     let start = Instant::now();
 
-    let mut result = 0;
-    let mut trimed_firewall = vec![];
-    let mut dedup = HashSet::new();
-    for layer in init_firewall(firewall) {
-        if dedup.insert(layer.clone()) {
-            trimed_firewall.push(layer);
-        }
-    }
-    for delay in 0.. {
-        if trimed_firewall
-            .iter()
-            .all(|l| l.depth == 0 || l.scanner_dis() != 0)
-        {
-            result = delay;
-            break;
-        }
-        trimed_firewall.iter_mut().for_each(|l| l.next());
-    }
+    let result = (0..1000000000)
+        .into_par_iter()
+        .find_first(|delay| {
+            firewall
+                .iter()
+                .enumerate()
+                .filter(|(_, &d)| d != 0)
+                .all(|(i, d)| (i + delay) % (2 * d - 2) != 0)
+        })
+        .unwrap();
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
 
-fn init_firewall(firewall: &[Layer]) -> Vec<Layer> {
-    let mut firewall = firewall.to_owned();
-    for i in 0..firewall.len() {
-        for _ in 0..i {
-            firewall[i].next();
-        }
-    }
-    firewall
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-struct Layer {
-    depth: usize,
-    scanner: usize,
-}
-
-impl Layer {
-    fn new(depth: usize) -> Self {
-        Self { depth, scanner: 0 }
-    }
-
-    fn next(&mut self) {
-        if self.depth == 0 {
-            return;
-        }
-        self.scanner += 1;
-    }
-
-    fn scanner_dis(&self) -> usize {
-        if self.depth == 0 {
-            0
-        } else {
-            self.scanner % (2 * self.depth - 2)
-        }
-    }
-}
-
-fn parse_input(input: &str) -> Vec<Layer> {
+fn parse_input(input: &str) -> Vec<usize> {
     let mut firewall = vec![];
     for line in input.lines() {
         if line.trim().is_empty() {
@@ -106,10 +64,8 @@ fn parse_input(input: &str) -> Vec<Layer> {
         if let Some((left, right)) = line.trim().split_once(':') {
             let left = left.trim().parse().unwrap();
             let right = right.trim().parse().unwrap();
-            for _ in firewall.len()..left {
-                firewall.push(Layer::new(0));
-            }
-            firewall.push(Layer::new(right))
+            firewall.resize(left, 0);
+            firewall.push(right);
         }
     }
     firewall
