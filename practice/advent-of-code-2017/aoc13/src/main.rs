@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -22,7 +23,10 @@ fn main() -> Result<()> {
 fn part1(firewall: &[Layer]) -> Result<usize> {
     let start = Instant::now();
 
-    let result = simulate(&firewall, 0);
+    let firewall = init_firewall(firewall);
+    let result = firewall.iter().enumerate().fold(0, |s, (i, l)| {
+        s + if l.scanner == 0 { i * l.depth } else { 0 }
+    });
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -33,11 +37,22 @@ fn part2(firewall: &[Layer]) -> Result<usize> {
     let start = Instant::now();
 
     let mut result = 0;
+    let mut trimed_firewall = vec![];
+    let mut dedup = HashSet::new();
+    for layer in init_firewall(firewall) {
+        if dedup.insert(layer.clone()) {
+            trimed_firewall.push(layer);
+        }
+    }
     for delay in 0.. {
-        if simulate(firewall, delay) == 0 {
+        if trimed_firewall
+            .iter()
+            .all(|l| l.depth == 0 || l.scanner != 0)
+        {
             result = delay;
             break;
         }
+        trimed_firewall.iter_mut().for_each(|l| l.next());
     }
 
     writeln!(io::stdout(), "Part 2: {result}")?;
@@ -45,34 +60,17 @@ fn part2(firewall: &[Layer]) -> Result<usize> {
     Ok(result)
 }
 
-fn simulate(firewall: &[Layer], delay: usize) -> usize {
-    let mut result = 0;
-    let mut count = 0;
+fn init_firewall(firewall: &[Layer]) -> Vec<Layer> {
     let mut firewall = firewall.to_owned();
-    let mut packet_layer = 0;
-    while packet_layer < firewall.len() {
-        if count > delay {
-            packet_layer += 1;
+    for i in 0..firewall.len() {
+        for _ in 0..i {
+            firewall[i].next();
         }
-        for (i, layer) in firewall.iter_mut().enumerate() {
-            if layer.depth == 0 {
-                continue;
-            }
-            if layer.scanner == 0 && packet_layer == i && count > delay {
-                result += i * layer.depth;
-                if result != 0 {
-                    return result;
-                }
-            }
-            layer.next();
-        }
-
-        count += 1;
     }
-    result
+    firewall
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct Layer {
     depth: usize,
     scanner: usize,
@@ -89,9 +87,12 @@ impl Layer {
     }
 
     fn next(&mut self) {
+        if self.depth == 0 {
+            return;
+        }
         if self.scanner == 0 {
             self.dir = true
-        } else if self.scanner + 1 == self.depth {
+        } else if self.scanner + 1 >= self.depth {
             self.dir = false
         }
 
