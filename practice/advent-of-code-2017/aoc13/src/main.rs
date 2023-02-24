@@ -15,38 +15,61 @@ fn main() -> Result<()> {
     let firewall = parse_input(&input);
 
     part1(&firewall)?;
-    // part2()?;
+    part2(&firewall)?;
     Ok(())
 }
 
 fn part1(firewall: &[Layer]) -> Result<usize> {
     let start = Instant::now();
 
-    let mut result = 0;
-    let mut firewall = firewall.to_owned();
-    let mut init = true;
-    let mut packet_layer = 0;
-    while packet_layer < firewall.len() {
-        if !init {
-            packet_layer += 1;
-        } else {
-            init = false;
-        }
-
-        for (i, layer) in firewall.iter_mut().enumerate() {
-            if layer.depth == 0 {
-                continue;
-            }
-            if layer.scanner == 0 && packet_layer == i {
-                result += i * layer.depth;
-            }
-            layer.next();
-        }
-    }
+    let result = simulate(&firewall, 0);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
+}
+
+fn part2(firewall: &[Layer]) -> Result<usize> {
+    let start = Instant::now();
+
+    let mut result = 0;
+    for delay in 0.. {
+        if simulate(firewall, delay) == 0 {
+            result = delay;
+            break;
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn simulate(firewall: &[Layer], delay: usize) -> usize {
+    let mut result = 0;
+    let mut count = 0;
+    let mut firewall = firewall.to_owned();
+    let mut packet_layer = 0;
+    while packet_layer < firewall.len() {
+        if count > delay {
+            packet_layer += 1;
+        }
+        for (i, layer) in firewall.iter_mut().enumerate() {
+            if layer.depth == 0 {
+                continue;
+            }
+            if layer.scanner == 0 && packet_layer == i && count > delay {
+                result += i * layer.depth;
+                if result != 0 {
+                    return result;
+                }
+            }
+            layer.next();
+        }
+
+        count += 1;
+    }
+    result
 }
 
 #[derive(Debug, Clone)]
@@ -106,4 +129,5 @@ fn example_input() {
         6: 4";
     let firewall = parse_input(input);
     assert_eq!(part1(&firewall).unwrap(), 24);
+    assert_eq!(part2(&firewall).unwrap(), 10);
 }
