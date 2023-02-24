@@ -25,7 +25,7 @@ fn part1(firewall: &[Layer]) -> Result<usize> {
 
     let firewall = init_firewall(firewall);
     let result = firewall.iter().enumerate().fold(0, |s, (i, l)| {
-        s + if l.scanner == 0 { i * l.depth } else { 0 }
+        s + if l.scanner_dis() == 0 { i * l.depth } else { 0 }
     });
 
     writeln!(io::stdout(), "Part 1: {result}")?;
@@ -47,7 +47,7 @@ fn part2(firewall: &[Layer]) -> Result<usize> {
     for delay in 0.. {
         if trimed_firewall
             .iter()
-            .all(|l| l.depth == 0 || l.scanner != 0)
+            .all(|l| l.depth == 0 || l.scanner_dis() != 0)
         {
             result = delay;
             break;
@@ -74,32 +74,25 @@ fn init_firewall(firewall: &[Layer]) -> Vec<Layer> {
 struct Layer {
     depth: usize,
     scanner: usize,
-    dir: bool,
 }
 
 impl Layer {
     fn new(depth: usize) -> Self {
-        Self {
-            depth,
-            scanner: 0,
-            dir: true,
-        }
+        Self { depth, scanner: 0 }
     }
 
     fn next(&mut self) {
         if self.depth == 0 {
             return;
         }
-        if self.scanner == 0 {
-            self.dir = true
-        } else if self.scanner + 1 >= self.depth {
-            self.dir = false
-        }
+        self.scanner += 1;
+    }
 
-        if self.dir {
-            self.scanner += 1;
+    fn scanner_dis(&self) -> usize {
+        if self.depth == 0 {
+            0
         } else {
-            self.scanner -= 1;
+            self.scanner % (2 * self.depth - 2)
         }
     }
 }
