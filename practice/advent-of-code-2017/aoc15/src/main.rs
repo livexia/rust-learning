@@ -8,7 +8,7 @@ macro_rules! err{
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Int = u128;
+type Int = u64;
 
 fn main() -> Result<()> {
     let mut input = String::new();
