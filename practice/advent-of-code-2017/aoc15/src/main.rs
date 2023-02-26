@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let (a, b) = parse_input(&input);
 
     part1(a, b)?;
-    // part2()?;
+    part2(a, b)?;
     Ok(())
 }
 
@@ -37,12 +37,40 @@ fn part1(a: Int, b: Int) -> Result<Int> {
     Ok(result)
 }
 
+fn part2(a: Int, b: Int) -> Result<Int> {
+    let start = Instant::now();
+
+    let mut result = 0;
+    let (mut a, mut b) = (a, b);
+    for _ in 0..5_000_000 {
+        (a, b) = (
+            next_value_with_criteria(a, 16807, 4),
+            next_value_with_criteria(b, 48271, 8),
+        );
+        if matched(a, b) {
+            result += 1;
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
 fn matched(a: Int, b: Int) -> bool {
     a & 0xffff == b & 0xffff
 }
 
 fn next_value(n: Int, factor: Int) -> Int {
     (n * factor) % 2147483647
+}
+
+fn next_value_with_criteria(mut n: Int, factor: Int, criteria: Int) -> Int {
+    n = next_value(n, factor);
+    while n % criteria != 0 {
+        n = next_value(n, factor)
+    }
+    n
 }
 
 fn parse_input(input: &str) -> (Int, Int) {
@@ -56,4 +84,5 @@ fn parse_input(input: &str) -> (Int, Int) {
 #[test]
 fn exaple_input() {
     assert_eq!(part1(65, 8921).unwrap(), 588);
+    assert_eq!(part2(65, 8921).unwrap(), 309);
 }
