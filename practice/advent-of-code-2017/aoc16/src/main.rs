@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -15,7 +16,7 @@ fn main() -> Result<()> {
     let moves = parse_input(&input);
 
     part1(&moves, 16)?;
-    // part2()?;
+    part2(&moves, 16)?;
     Ok(())
 }
 
@@ -24,22 +25,57 @@ fn part1(moves: &[Dance], length: usize) -> Result<String> {
 
     let mut programs: Vec<_> = (0..length).collect();
     let mut offset = 0;
-    for m in moves {
-        m.dance(&mut programs, &mut offset, length);
-    }
-    let mut list: Vec<_> = programs.iter().enumerate().map(|(i, a)| (a, i)).collect();
-    list.sort();
-    let result = list
-        .iter()
-        .cycle()
-        .skip(offset)
-        .take(length)
-        .map(|(_, b)| (*b as u8 + b'a') as char)
-        .collect();
+    dance_with_moves(&mut programs, &mut offset, length, moves);
+    let result = reoder(&programs, offset, length);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
+}
+
+fn part2(moves: &[Dance], length: usize) -> Result<String> {
+    let start = Instant::now();
+
+    let mut programs: Vec<_> = (0..length).collect();
+    let mut offset = 0;
+
+    let mut visited = HashMap::new();
+    visited.insert(programs.clone(), 0);
+    let mut loop_size = 0;
+
+    for t in 0..1_000_000_000 {
+        dance_with_moves(&mut programs, &mut offset, length, moves);
+        if visited.contains_key(&programs) {
+            loop_size = t - visited.get(&programs).unwrap();
+            break;
+        }
+        visited.insert(programs.clone(), t);
+    }
+    for _ in 0..1_000_000_000 % loop_size {
+        dance_with_moves(&mut programs, &mut offset, length, moves);
+    }
+    let result = reoder(&programs, offset, length);
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn reoder(programs: &[usize], offset: usize, length: usize) -> String {
+    let mut list: Vec<_> = programs.iter().enumerate().map(|(i, a)| (a, i)).collect();
+    list.sort();
+    list.iter()
+        .cycle()
+        .skip(offset)
+        .take(length)
+        .map(|(_, b)| (*b as u8 + b'a') as char)
+        .collect()
+}
+
+fn dance_with_moves(programs: &mut [usize], offset: &mut usize, length: usize, moves: &[Dance]) {
+    for m in moves {
+        m.dance(programs, offset, length);
+    }
 }
 
 #[derive(Debug)]
