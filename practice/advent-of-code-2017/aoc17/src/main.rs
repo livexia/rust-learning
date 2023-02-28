@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let steps = parse_input(&input);
 
     part1(steps)?;
-    // part2()?;
+    part2(steps)?;
     Ok(())
 }
 
@@ -42,6 +42,24 @@ fn part1(steps: usize) -> Result<usize> {
         .unwrap();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(steps: usize) -> Result<usize> {
+    let start = Instant::now();
+
+    let limit = 50_000_000;
+    let mut result = 0;
+    let mut buffer = 0;
+    for i in 1..limit {
+        buffer = (buffer + steps) % i + 1;
+        if buffer == 1 {
+            result = i;
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
