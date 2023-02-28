@@ -22,13 +22,24 @@ fn main() -> Result<()> {
 fn part1(steps: usize) -> Result<usize> {
     let start = Instant::now();
 
-    let mut buffer: Vec<_> = (0..=2017).collect();
-    for i in 1..=10 {
-        buffer[i] = (buffer[i - 1] + steps) % (i + 1);
-        dbg!(buffer[i]);
+    let limit = 2018;
+    let mut buffer: Vec<_> = vec![0; limit];
+    for i in 1..limit {
+        buffer[i] = (buffer[i - 1] + steps) % i + 1;
+        for j in 0..limit {
+            if i == j {
+                continue;
+            }
+            if buffer[j] >= buffer[i] {
+                buffer[j] += 1;
+            }
+        }
     }
 
-    let result = buffer.iter().position(|p| *p == buffer[2017] + 1).unwrap();
+    let result = buffer
+        .iter()
+        .position(|p| *p == buffer[limit - 1] + 1)
+        .unwrap();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -42,4 +53,5 @@ fn parse_input(input: &str) -> usize {
 #[test]
 fn example_input() {
     assert_eq!(part1(3).unwrap(), 638);
+    assert_eq!(part1(312).unwrap(), 772);
 }
