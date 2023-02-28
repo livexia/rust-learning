@@ -72,4 +72,5 @@ fn parse_input(input: &str) -> usize {
 fn example_input() {
     assert_eq!(part1(3).unwrap(), 638);
     assert_eq!(part1(312).unwrap(), 772);
+    assert_eq!(part2(312).unwrap(), 42729050)
 }
