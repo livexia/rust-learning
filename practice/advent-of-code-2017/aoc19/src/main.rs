@@ -84,23 +84,40 @@ fn main() -> Result<()> {
     let grid = parse_input(&input);
 
     part1(&grid)?;
-    // part2()?;
+    part2(&grid)?;
     Ok(())
+}
+
+fn find_path(grid: &[Vec<char>]) -> (String, usize) {
+    let ((mut x, mut y), mut d) = (find_start(grid).unwrap(), 0);
+    let mut path = String::new();
+    let mut steps = 1;
+
+    while let Some((nx, ny, nd)) = move_with_dir(x, y, d, grid, &mut path) {
+        (x, y, d) = (nx, ny, nd);
+        steps += 1;
+    }
+    (path, steps)
 }
 
 fn part1(grid: &[Vec<char>]) -> Result<String> {
     let start = Instant::now();
 
-    let ((mut x, mut y), mut d) = (find_start(grid).unwrap(), 0);
-    let mut path = String::new();
-
-    while let Some((nx, ny, nd)) = move_with_dir(x, y, d, grid, &mut path) {
-        (x, y, d) = (nx, ny, nd);
-    }
+    let path = find_path(grid).0;
 
     writeln!(io::stdout(), "Part 1: {path}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(path)
+}
+
+fn part2(grid: &[Vec<char>]) -> Result<usize> {
+    let start = Instant::now();
+
+    let result = find_path(grid).1;
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
 }
 
 #[test]
@@ -113,4 +130,5 @@ fn example_input() {
      +B-+  +--+ 
                 ";
     assert_eq!(&part1(&parse_input(input)).unwrap(), "ABCDEF");
+    assert_eq!(part2(&parse_input(input)).unwrap(), 38);
 }
