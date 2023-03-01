@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::str::FromStr;
@@ -26,7 +26,7 @@ impl Operand {
         }
     }
 
-    fn set(&self, registers: &mut HashMap<char, Int>, v: Int) -> Option<i64> {
+    fn set(&self, registers: &mut HashMap<char, Int>, v: Int) -> Option<Int> {
         match self {
             Operand::Register(c) => registers.insert(*c, v),
             Operand::Immediate(_) => None,
@@ -76,10 +76,11 @@ impl FromStr for Instr {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Cpu {
     registers: HashMap<char, Int>,
     pc: Int,
-    buffer: Int,
+    queue: VecDeque<Int>,
     program: Vec<Instr>,
 }
 
@@ -88,26 +89,17 @@ impl Cpu {
         Self {
             registers: HashMap::new(),
             pc: 0,
-            buffer: 0,
+            queue: VecDeque::new(),
             program,
         }
     }
 
-    fn reset(&mut self) {
-        self.registers.clear();
-        self.pc = 0;
-        self.buffer = 0;
-    }
-
-    fn execute(&mut self) -> Option<Int> {
+    fn execute(&mut self, queue: Option<&mut VecDeque<Int>>) -> Result<Option<Int>> {
         use Instr::*;
 
         let temp = self.pc;
         self.pc += 1;
         match &self.program[temp as usize] {
-            Snd(op1) => {
-                self.buffer = op1.value(&self.registers);
-            }
             Set((op1, op2)) => {
                 let v = op2.value(&self.registers);
                 op1.set(&mut self.registers, v);
@@ -124,10 +116,22 @@ impl Cpu {
                 let v = op1.value(&self.registers) % op2.value(&self.registers);
                 op1.set(&mut self.registers, v);
             }
+            Snd(op1) => {
+                self.queue.push_back(op1.value(&self.registers));
+            }
             Rcv(op1) => {
-                if op1.value(&self.registers) != 0 {
-                    op1.set(&mut self.registers, self.buffer);
-                    return Some(self.buffer);
+                if let Some(queue) = queue {
+                    if let Some(v) = queue.pop_front() {
+                        op1.set(&mut self.registers, v);
+                        return Ok(Some(v));
+                    } else {
+                        self.pc = temp;
+                        return err!("waiting data");
+                    }
+                } else if op1.value(&self.registers) != 0 {
+                    let &v = self.queue.back().unwrap();
+                    op1.set(&mut self.registers, v);
+                    return Ok(Some(v));
                 }
             }
             Jgz((op1, op2)) => {
@@ -136,7 +140,7 @@ impl Cpu {
                 }
             }
         }
-        None
+        Ok(None)
     }
 }
 
@@ -153,25 +157,48 @@ fn parse_input(input: &str) -> Result<Cpu> {
 fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
-    let mut cpu = parse_input(&input)?;
+    let cpu = parse_input(&input)?;
 
-    part1(&mut cpu)?;
-    // part2()?;
+    part1(&cpu)?;
+    part2(&cpu)?;
     Ok(())
 }
 
-fn part1(cpu: &mut Cpu) -> Result<Int> {
+fn part1(cpu: &Cpu) -> Result<Int> {
     let start = Instant::now();
 
+    let mut cpu = cpu.to_owned();
     let result;
     loop {
-        if let Some(r) = cpu.execute() {
+        if let Ok(Some(r)) = cpu.execute(None) {
             result = r;
             break;
         }
     }
 
     writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(cpu: &Cpu) -> Result<Int> {
+    let start = Instant::now();
+
+    let mut cpu0 = cpu.to_owned();
+    let mut cpu1 = cpu.to_owned();
+    cpu1.registers.insert('p', 1);
+    let mut result = 0;
+    loop {
+        let r0 = cpu0.execute(Some(&mut cpu1.queue));
+        let r1 = cpu1.execute(Some(&mut cpu0.queue));
+        match (r0, r1) {
+            (Ok(Some(_)), _) => result += 1,
+            (Err(_), Err(_)) => break,
+            _ => (),
+        }
+    }
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
@@ -190,6 +217,16 @@ fn example_input() {
         set a 1
         jgz a -2
         ";
-    let mut cpu = parse_input(input).unwrap();
-    assert_eq!(part1(&mut cpu).unwrap(), 4);
+    let cpu = parse_input(input).unwrap();
+    assert_eq!(part1(&cpu).unwrap(), 4);
+
+    let input = "snd 1
+        snd 2
+        snd p
+        rcv a
+        rcv b
+        rcv c
+        rcv d";
+    let cpu = parse_input(input).unwrap();
+    assert_eq!(part2(&cpu).unwrap(), 3);
 }
