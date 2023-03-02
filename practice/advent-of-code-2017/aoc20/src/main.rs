@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -52,20 +52,32 @@ fn dis(c1: Coord, c2: Coord) -> Int {
     (c1.0.abs_diff(c2.0) + c1.1.abs_diff(c2.1) + c1.2.abs_diff(c2.2)) as Int
 }
 
+fn calc_p(p0: Int, v0: Int, a: Int, t: Int) -> Int {
+    p0 + (2 * v0 + a) * t + a * t * t / 2
+}
+
+fn p_at_t(p0: Coord, v0: Coord, a: Coord, t: Int) -> Coord {
+    (
+        calc_p(p0.0, v0.0, a.0, t),
+        calc_p(p0.1, v0.1, a.1, t),
+        calc_p(p0.2, v0.2, a.2, t),
+    )
+}
+
 fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
     let particles = parse_input(&input)?;
 
     part1(&particles)?;
-    // part2()?;
+    part2(&particles)?;
     Ok(())
 }
 
 fn part1(particles: &[(Coord, Coord, Coord)]) -> Result<usize> {
     let start = Instant::now();
 
-    let mut patricles = particles.to_owned();
+    let mut particles = particles.to_owned();
     let mut min_dis_times = HashMap::new();
 
     let result;
@@ -74,7 +86,7 @@ fn part1(particles: &[(Coord, Coord, Coord)]) -> Result<usize> {
         total_count += 1;
         let mut min_dis = Int::MAX;
         let mut min_index = 0;
-        for (i, particle) in patricles.iter_mut().enumerate() {
+        for (i, particle) in particles.iter_mut().enumerate() {
             particle.1 = inc_v(particle.1, particle.2);
             particle.0 = inc_p(particle.0, particle.1);
             let d = dis(particle.0, (0, 0, 0));
@@ -96,9 +108,50 @@ fn part1(particles: &[(Coord, Coord, Coord)]) -> Result<usize> {
     Ok(result)
 }
 
+fn part2(particles: &[(Coord, Coord, Coord)]) -> Result<usize> {
+    let start = Instant::now();
+
+    let mut p_index: HashSet<_> = (0..particles.len()).collect();
+    let mut dup: HashSet<Coord> = particles.iter().map(|(p, _, _)| *p).collect();
+    let mut seen: HashMap<usize, HashSet<Coord>> = particles
+        .iter()
+        .enumerate()
+        .map(|(i, (p, _, _))| (i, [*p].into_iter().collect()))
+        .collect();
+
+    for t in 0..1_000_0 {
+        let mut temp = HashSet::new();
+        for &i in &p_index {
+            let (p0, v0, a) = particles[i];
+            let n_p = p_at_t(p0, v0, a, t);
+            if seen.get(&i).unwrap().contains(&n_p) {
+                temp.insert(i);
+            }
+            seen.get_mut(&i).unwrap().insert(n_p);
+            if dup.insert(n_p) {
+                temp.insert(i);
+            }
+        }
+        p_index = temp;
+        if p_index.len() < particles.len() {
+            println!("{}", p_index.len());
+        }
+    }
+    let result = p_index.len();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
 #[test]
 fn example_input() {
     let input = "p=< 3,0,0>, v=< 2,0,0>, a=<-1,0,0>
         p=< 4,0,0>, v=< 0,0,0>, a=<-2,0,0>";
     assert_eq!(part1(&parse_input(input).unwrap()).unwrap(), 0);
+    let input = "p=<-6,0,0>, v=< 3,0,0>, a=< 0,0,0>    
+        p=<-4,0,0>, v=< 2,0,0>, a=< 0,0,0>
+        p=<-2,0,0>, v=< 1,0,0>, a=< 0,0,0>
+        p=< 3,0,0>, v=<-1,0,0>, a=< 0,0,0>";
+    assert_eq!(part2(&parse_input(input).unwrap()).unwrap(), 1);
 }
