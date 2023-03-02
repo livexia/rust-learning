@@ -8,7 +8,7 @@ macro_rules! err {
 }
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
-type Int = i32;
+type Int = i64;
 type Coord = (Int, Int, Int);
 
 // , v=<x,y,z => Coord
@@ -52,10 +52,13 @@ fn dis(c1: Coord, c2: Coord) -> Int {
     (c1.0.abs_diff(c2.0) + c1.1.abs_diff(c2.1) + c1.2.abs_diff(c2.2)) as Int
 }
 
+#[allow(dead_code)]
 fn calc_p(p0: Int, v0: Int, a: Int, t: Int) -> Int {
-    p0 + (2 * v0 + a) * t + a * t * t / 2
+    // times two to avoid divide lost
+    2 * p0 + (2 * v0 + a) * t + a * t * t
 }
 
+#[allow(dead_code)]
 fn p_at_t(p0: Coord, v0: Coord, a: Coord, t: Int) -> Coord {
     (
         calc_p(p0.0, v0.0, a.0, t),
@@ -111,30 +114,31 @@ fn part1(particles: &[(Coord, Coord, Coord)]) -> Result<usize> {
 fn part2(particles: &[(Coord, Coord, Coord)]) -> Result<usize> {
     let start = Instant::now();
 
+    let mut particles = particles.to_owned();
     let mut p_index: HashSet<_> = (0..particles.len()).collect();
-    let mut dup: HashSet<Coord> = particles.iter().map(|(p, _, _)| *p).collect();
-    let mut seen: HashMap<usize, HashSet<Coord>> = particles
-        .iter()
-        .enumerate()
-        .map(|(i, (p, _, _))| (i, [*p].into_iter().collect()))
-        .collect();
+    let mut last_count = particles.len();
 
-    for t in 0..1_000_0 {
-        let mut temp = HashSet::new();
+    for _t in 0..1_000 {
+        let mut temp = HashMap::new();
         for &i in &p_index {
-            let (p0, v0, a) = particles[i];
-            let n_p = p_at_t(p0, v0, a, t);
-            if seen.get(&i).unwrap().contains(&n_p) {
-                temp.insert(i);
-            }
-            seen.get_mut(&i).unwrap().insert(n_p);
-            if dup.insert(n_p) {
-                temp.insert(i);
-            }
+            particles[i].1 = inc_v(particles[i].1, particles[i].2);
+            particles[i].0 = inc_p(particles[i].0, particles[i].1);
+            // let (p0, v0, a) = particles[i];
+            // let n_p = p_at_t(p0, v0, a, t);
+            temp.entry(particles[i].0).or_insert(vec![]).push(i);
         }
-        p_index = temp;
-        if p_index.len() < particles.len() {
-            println!("{}", p_index.len());
+        if temp.len() == p_index.len() {
+            p_index = temp.values().map(|v| v[0]).collect();
+        } else {
+            p_index = temp
+                .values()
+                .filter(|v| v.len() == 1)
+                .map(|v| v[0])
+                .collect();
+        }
+        if p_index.len() < last_count {
+            last_count = p_index.len();
+            // println!("{} {_t}", p_index.len());
         }
     }
     let result = p_index.len();
