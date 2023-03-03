@@ -54,19 +54,81 @@ impl Image {
             size: 3,
         }
     }
+
+    fn enhance(&mut self, rules: &HashMap<(usize, u128), u128>) {
+        let chunk_size = if self.size % 2 == 0 {
+            2
+        } else if self.size % 3 == 0 {
+            3
+        } else {
+            unreachable!("image size {} does not divisible by 2 or 3", self.size);
+        };
+        // split image with chunk_size
+        let chunks = self.split(chunk_size);
+        // match pattern with rules
+        let new_chunks = chunks
+            .iter()
+            .map(|&chunk| search_rule(chunk, chunk_size, rules))
+            .collect();
+        // merge new chunks with chunk_size + 1
+        self.merge(chunk_size + 1, new_chunks);
+    }
+
+    fn split(&self, chunk_size: usize) -> Vec<u128> {
+        let mut new_chunks = vec![];
+        let mask = if chunk_size == 2 { 0xff } else { 0xfff };
+        let chunk_count = self.size / chunk_size;
+        for rows in self.raw.chunks(chunk_size) {
+            let mut new_rows = vec![];
+            for chunk_index in 0..chunk_count {
+                let mut chunk = 0;
+                for row in rows {
+                    chunk <<= chunk_size;
+                    chunk |= (row >> (chunk_size * chunk_index)) & mask;
+                }
+                new_rows.push(chunk);
+            }
+            new_chunks.extend(new_rows.iter().rev());
+        }
+        new_chunks
+    }
+
+    fn merge(&mut self, chunk_size: usize, chunks: Vec<u128>) {
+        dbg!(&chunks);
+        println!("{:0b}", chunks[0]);
+        todo!()
+    }
+}
+
+fn search_rule(pattern: u128, chunk_size: usize, rules: &HashMap<(usize, u128), u128>) -> u128 {
+    for pattern in mutate_pattern(pattern, chunk_size) {
+        if let Some(r) = rules.get(&(chunk_size, pattern)) {
+            return *r;
+        }
+    }
+
+    unreachable!("unrecognizable pattern {pattern:0b}")
+}
+
+fn mutate_pattern(pattern: u128, chunk_size: usize) -> Vec<u128> {
+    todo!()
 }
 
 fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
+    let rules = parse_input(&input);
 
-    // part1()?;
+    part1(&rules)?;
     // part2()?;
     Ok(())
 }
 
-fn part1() -> Result<()> {
+fn part1(rules: &HashMap<(usize, u128), u128>) -> Result<()> {
     let start = Instant::now();
+
+    let mut image = Image::new();
+    image.enhance(rules);
 
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     todo!()
