@@ -3,6 +3,7 @@ use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
 
+#[allow(unused_macros)]
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) }
 }
@@ -22,6 +23,46 @@ fn parse_pattern(input: &str) -> u128 {
     bit_map
 }
 
+fn mutate_size_two_pattern(input: &str) -> Vec<String> {
+    let origin: Vec<_> = input
+        .trim()
+        .chars()
+        .filter(|&l| l == '.' || l == '#')
+        .collect();
+    assert_eq!(origin.len(), 4);
+    let r = [
+        [origin[0], origin[1], origin[2], origin[3]],
+        [origin[2], origin[0], origin[3], origin[1]],
+        [origin[3], origin[2], origin[1], origin[0]],
+        [origin[1], origin[3], origin[0], origin[2]],
+        [origin[1], origin[0], origin[3], origin[2]],
+        [origin[3], origin[1], origin[2], origin[0]],
+        [origin[2], origin[3], origin[0], origin[1]],
+        [origin[0], origin[2], origin[1], origin[3]],
+    ];
+    r.into_iter().map(|v| v.into_iter().collect()).collect()
+}
+
+fn mutate_size_three_pattern(input: &str) -> Vec<String> {
+    let o: Vec<_> = input
+        .trim()
+        .chars()
+        .filter(|&l| l == '.' || l == '#')
+        .collect();
+    assert_eq!(o.len(), 9);
+    let r = [
+        [o[0], o[1], o[2], o[3], o[4], o[5], o[6], o[7], o[8]],
+        [o[6], o[3], o[0], o[7], o[4], o[1], o[8], o[5], o[2]],
+        [o[8], o[7], o[6], o[5], o[4], o[3], o[2], o[1], o[1]],
+        [o[2], o[5], o[8], o[1], o[4], o[7], o[0], o[3], o[6]],
+        [o[2], o[1], o[0], o[5], o[4], o[4], o[8], o[7], o[6]],
+        [o[8], o[5], o[2], o[7], o[4], o[1], o[6], o[3], o[0]],
+        [o[6], o[7], o[8], o[3], o[4], o[5], o[0], o[1], o[2]],
+        [o[0], o[3], o[6], o[1], o[4], o[7], o[2], o[5], o[8]],
+    ];
+    r.into_iter().map(|v| v.into_iter().collect()).collect()
+}
+
 fn parse_input(input: &str) -> HashMap<(usize, u128), u128> {
     let mut rules = HashMap::new();
     for line in input.lines() {
@@ -29,10 +70,15 @@ fn parse_input(input: &str) -> HashMap<(usize, u128), u128> {
             continue;
         }
         if let Some((left, right)) = line.trim().split_once(" => ") {
-            let size = if left.trim().len() == 3 * 3 + 2 { 3 } else { 4 };
-            let left = parse_pattern(left);
+            let (size, patterns) = if left.trim().len() == 3 * 3 + 2 {
+                (3, mutate_size_three_pattern(left))
+            } else {
+                (2, mutate_size_two_pattern(left))
+            };
             let right = parse_pattern(right);
-            rules.insert((size, left), right);
+            for left in patterns {
+                rules.insert((size, parse_pattern(&left)), right);
+            }
         }
     }
     rules
@@ -76,7 +122,7 @@ impl Image {
 
     fn split(&self, chunk_size: usize) -> Vec<u128> {
         let mut new_chunks = vec![];
-        let mask = if chunk_size == 2 { 0xff } else { 0xfff };
+        let mask = if chunk_size == 2 { 0b11 } else { 0b111 };
         let chunk_count = self.size / chunk_size;
         for rows in self.raw.chunks(chunk_size) {
             let mut new_rows = vec![];
@@ -94,24 +140,29 @@ impl Image {
     }
 
     fn merge(&mut self, chunk_size: usize, chunks: Vec<u128>) {
-        dbg!(&chunks);
-        println!("{:0b}", chunks[0]);
-        todo!()
+        let mask = if chunk_size == 3 { 0b111 } else { 0b1111 };
+        let chunk_count = self.size / (chunk_size - 1);
+        self.raw = vec![0; self.raw.len() + chunk_count];
+        for (x, rows) in chunks.chunks(chunk_count).enumerate() {
+            for chunk in rows.iter() {
+                for i in 0..chunk_size {
+                    let bits = (chunk >> (chunk_size * (chunk_size - 1 - i))) & mask;
+                    self.raw[x * chunk_size + i] <<= chunk_size;
+                    self.raw[x * chunk_size + i] |= bits;
+                }
+            }
+        }
+
+        self.size += chunk_count;
     }
 }
 
 fn search_rule(pattern: u128, chunk_size: usize, rules: &HashMap<(usize, u128), u128>) -> u128 {
-    for pattern in mutate_pattern(pattern, chunk_size) {
-        if let Some(r) = rules.get(&(chunk_size, pattern)) {
-            return *r;
-        }
+    if let Some(r) = rules.get(&(chunk_size, pattern)) {
+        return *r;
     }
 
     unreachable!("unrecognizable pattern {pattern:0b}")
-}
-
-fn mutate_pattern(pattern: u128, chunk_size: usize) -> Vec<u128> {
-    todo!()
 }
 
 fn main() -> Result<()> {
@@ -119,17 +170,29 @@ fn main() -> Result<()> {
     io::stdin().read_to_string(&mut input)?;
     let rules = parse_input(&input);
 
-    part1(&rules)?;
+    part1(&rules, 5)?;
     // part2()?;
     Ok(())
 }
 
-fn part1(rules: &HashMap<(usize, u128), u128>) -> Result<()> {
+fn part1(rules: &HashMap<(usize, u128), u128>, count: usize) -> Result<u32> {
     let start = Instant::now();
 
     let mut image = Image::new();
-    image.enhance(rules);
+    for _ in 0..count {
+        image.enhance(rules);
+    }
 
+    let result = image.raw.iter().map(|b| b.count_ones()).sum();
+
+    writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    todo!()
+    Ok(result)
+}
+
+#[test]
+fn example_input() {
+    let input = "../.# => ##./#../...
+.#./..#/### => #..#/..../..../#..#";
+    assert_eq!(part1(&parse_input(input), 2).unwrap(), 12);
 }
