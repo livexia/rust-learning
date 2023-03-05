@@ -155,6 +155,33 @@ impl Image {
 
         self.size += chunk_count;
     }
+
+    fn from_raw(raw: Vec<u128>, size: usize) -> Self {
+        Self { raw, size }
+    }
+
+    fn split_to_images(&self, chunk_size: usize) -> Vec<Image> {
+        if chunk_size != 3 {
+            unimplemented!("unable to split image to other size than 3x3");
+        }
+        let mut images = vec![];
+        let mask = if chunk_size == 2 { 0b11 } else { 0b111 };
+        let chunk_count = self.size / chunk_size;
+        for rows in self.raw.chunks(chunk_size) {
+            for chunk_index in 0..chunk_count {
+                let mut raw = vec![];
+                for row in rows {
+                    raw.push((row >> (chunk_size * chunk_index)) & mask);
+                }
+                images.push(Image::from_raw(raw, chunk_size));
+            }
+        }
+        images
+    }
+
+    fn pixel_count(&self) -> u32 {
+        self.raw.iter().map(|r| r.count_ones()).sum()
+    }
 }
 
 fn search_rule(pattern: u128, chunk_size: usize, rules: &HashMap<(usize, u128), u128>) -> u128 {
@@ -169,10 +196,9 @@ fn enhance_result(rules: &HashMap<(usize, u128), u128>, count: usize) -> u32 {
     let mut image = Image::new();
     for _ in 0..count {
         image.enhance(rules);
-        println!("{}", image.raw.iter().map(|b| b.count_ones()).sum::<u32>());
     }
 
-    image.raw.iter().map(|b| b.count_ones()).sum()
+    image.pixel_count()
 }
 
 fn main() -> Result<()> {
@@ -198,7 +224,19 @@ fn part1(rules: &HashMap<(usize, u128), u128>) -> Result<u32> {
 fn part2(rules: &HashMap<(usize, u128), u128>) -> Result<u32> {
     let start = Instant::now();
 
-    let result = enhance_result(rules, 18);
+    let mut images = vec![Image::new()];
+    for _ in 0..3 {
+        let mut temp = vec![];
+        for image in images.iter_mut() {
+            for _ in 0..6 {
+                image.enhance(rules)
+            }
+            temp.extend(image.split_to_images(3));
+        }
+        images = temp;
+    }
+
+    let result = images.iter().map(|i| i.pixel_count()).sum();
 
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
