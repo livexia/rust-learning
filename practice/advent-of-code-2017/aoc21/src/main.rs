@@ -165,27 +165,42 @@ fn search_rule(pattern: u128, chunk_size: usize, rules: &HashMap<(usize, u128), 
     unreachable!("unrecognizable pattern {pattern:0b}")
 }
 
+fn enhance_result(rules: &HashMap<(usize, u128), u128>, count: usize) -> u32 {
+    let mut image = Image::new();
+    for _ in 0..count {
+        image.enhance(rules);
+        println!("{}", image.raw.iter().map(|b| b.count_ones()).sum::<u32>());
+    }
+
+    image.raw.iter().map(|b| b.count_ones()).sum()
+}
+
 fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
     let rules = parse_input(&input);
 
-    part1(&rules, 5)?;
-    // part2()?;
+    part1(&rules)?;
+    part2(&rules)?;
     Ok(())
 }
 
-fn part1(rules: &HashMap<(usize, u128), u128>, count: usize) -> Result<u32> {
+fn part1(rules: &HashMap<(usize, u128), u128>) -> Result<u32> {
     let start = Instant::now();
 
-    let mut image = Image::new();
-    for _ in 0..count {
-        image.enhance(rules);
-    }
-
-    let result = image.raw.iter().map(|b| b.count_ones()).sum();
+    let result = enhance_result(rules, 5);
 
     writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(rules: &HashMap<(usize, u128), u128>) -> Result<u32> {
+    let start = Instant::now();
+
+    let result = enhance_result(rules, 18);
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
@@ -194,5 +209,5 @@ fn part1(rules: &HashMap<(usize, u128), u128>, count: usize) -> Result<u32> {
 fn example_input() {
     let input = "../.# => ##./#../...
 .#./..#/### => #..#/..../..../#..#";
-    assert_eq!(part1(&parse_input(input), 2).unwrap(), 12);
+    assert_eq!(enhance_result(&parse_input(input), 2), 12);
 }
