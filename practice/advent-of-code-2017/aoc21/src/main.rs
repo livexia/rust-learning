@@ -84,6 +84,7 @@ fn parse_input(input: &str) -> HashMap<(usize, u128), u128> {
     rules
 }
 
+#[derive(Clone, Hash, PartialEq, Eq)]
 struct Image {
     raw: Vec<u128>,
     size: usize,
@@ -225,13 +226,20 @@ fn part2(rules: &HashMap<(usize, u128), u128>) -> Result<u32> {
     let start = Instant::now();
 
     let mut images = vec![Image::new()];
+    let mut cache: HashMap<Image, Image> = HashMap::new();
     for _ in 0..3 {
         let mut temp = vec![];
         for image in images.iter_mut() {
-            for _ in 0..6 {
-                image.enhance(rules)
+            if let Some(image) = cache.get(image) {
+                temp.extend(image.split_to_images(3));
+            } else {
+                let origin = image.clone();
+                for _ in 0..6 {
+                    image.enhance(rules)
+                }
+                temp.extend(image.split_to_images(3));
+                cache.insert(origin, image.clone());
             }
-            temp.extend(image.split_to_images(3));
         }
         images = temp;
     }
