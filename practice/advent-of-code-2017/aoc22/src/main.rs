@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -11,6 +11,7 @@ macro_rules! err {
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
 type Coord = (i32, i32);
 type Grid = HashSet<Coord>;
+type FlagGrid = HashMap<Coord, Flag>;
 
 fn parse_inpit(input: &str) -> (Grid, Carrier) {
     let mut grid = Grid::new();
@@ -72,6 +73,46 @@ impl Carrier {
         self.move_forward();
         !infected
     }
+
+    fn reverse(&mut self) {
+        self.facing = (self.facing + 2) % 4;
+    }
+
+    fn burst_with_evolves(&mut self, grid: &mut FlagGrid) -> bool {
+        use Flag::*;
+        let &flag = grid.get(&self.pos).unwrap_or(&Flag::Clean);
+        let mut infected = false;
+        match flag {
+            Clean => self.turn_left(),
+            Infected => self.turn_right(),
+            Flagged => self.reverse(),
+            Weakened => infected = true,
+        }
+        grid.insert(self.pos, flag.next());
+        self.move_forward();
+        infected
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Flag {
+    Clean,
+    Weakened,
+    Infected,
+    Flagged,
+}
+
+impl Flag {
+    fn next(self) -> Self {
+        use Flag::*;
+
+        match self {
+            Clean => Weakened,
+            Weakened => Infected,
+            Infected => Flagged,
+            Flagged => Clean,
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -80,7 +121,7 @@ fn main() -> Result<()> {
     let (grid, carrier) = parse_inpit(&input);
 
     part1(&grid, &carrier)?;
-    // part2()?;
+    part2(&grid, &carrier)?;
     Ok(())
 }
 
@@ -96,6 +137,20 @@ fn part1(grid: &Grid, carrier: &Carrier) -> Result<usize> {
     Ok(result)
 }
 
+fn part2(grid: &Grid, carrier: &Carrier) -> Result<usize> {
+    let start = Instant::now();
+
+    let mut grid = grid.iter().map(|c| (*c, Flag::Infected)).collect();
+    let mut carrier = carrier.to_owned();
+    let result = (0..10_000_000)
+        .filter(|_| carrier.burst_with_evolves(&mut grid))
+        .count();
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
 #[test]
 fn example_input() {
     let input = "..#
@@ -103,4 +158,5 @@ fn example_input() {
         ...";
     let (grid, carrier) = parse_inpit(input);
     assert_eq!(part1(&grid, &carrier).unwrap(), 5587);
+    assert_eq!(part2(&grid, &carrier).unwrap(), 2511944);
 }
