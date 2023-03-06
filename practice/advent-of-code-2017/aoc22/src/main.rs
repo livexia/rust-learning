@@ -80,7 +80,7 @@ impl Carrier {
 
     fn burst_with_evolves(&mut self, grid: &mut FlagGrid) -> bool {
         use Flag::*;
-        let &flag = grid.get(&self.pos).unwrap_or(&Flag::Clean);
+        let flag = grid.entry(self.pos).or_insert(Flag::Clean);
         let mut infected = false;
         match flag {
             Clean => self.turn_left(),
@@ -88,7 +88,7 @@ impl Carrier {
             Flagged => self.reverse(),
             Weakened => infected = true,
         }
-        grid.insert(self.pos, flag.next());
+        flag.next();
         self.move_forward();
         infected
     }
@@ -103,14 +103,14 @@ enum Flag {
 }
 
 impl Flag {
-    fn next(self) -> Self {
+    fn next(&mut self) {
         use Flag::*;
 
         match self {
-            Clean => Weakened,
-            Weakened => Infected,
-            Infected => Flagged,
-            Flagged => Clean,
+            Clean => *self = Weakened,
+            Weakened => *self = Infected,
+            Infected => *self = Flagged,
+            Flagged => *self = Clean,
         }
     }
 }
