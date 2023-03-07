@@ -3,6 +3,7 @@ use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
 
+#[allow(unused_macros)]
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) }
 }
