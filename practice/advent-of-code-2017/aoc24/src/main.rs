@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -24,20 +24,19 @@ fn parse_input(input: &str) -> Result<Vec<(usize, usize)>> {
     Ok(r)
 }
 
-fn bfs(src: usize, components: &[(usize, usize)]) -> usize {
-    println!("{:?}", components);
-    let mut visited = HashSet::new();
-    let mut queue = VecDeque::new();
-    queue.push_back((src, 0));
-    let mut max_strength = 0;
-    while let Some((cur, s)) = queue.pop_front() {
-        max_strength = max_strength.max(s);
-        for &(a, b) in components {
-            if a == cur && visited.insert((a, b)) {
-                queue.push_back((b, s + a + b));
-            } else if b == cur && visited.insert((a, b)) {
-                queue.push_back((a, s + a + b));
-            }
+fn dfs(
+    cur: (usize, usize),
+    components: &[(usize, usize)],
+    visited: &mut HashSet<(usize, usize)>,
+) -> usize {
+    let mut max_strength = cur.0 + cur.1;
+    for &(a, b) in components {
+        if a == cur.1 && visited.insert((a, b)) {
+            max_strength = max_strength.max(dfs((a, b), components, visited) + cur.0 + cur.1);
+            visited.remove(&(a, b));
+        } else if b == cur.1 && visited.insert((a, b)) {
+            max_strength = max_strength.max(dfs((b, a), components, visited) + cur.0 + cur.1);
+            visited.remove(&(a, b));
         }
     }
     max_strength
@@ -46,7 +45,7 @@ fn bfs(src: usize, components: &[(usize, usize)]) -> usize {
 fn part1(components: &[(usize, usize)]) -> Result<usize> {
     let start = Instant::now();
 
-    let result = bfs(0, components);
+    let result = dfs((0, 0), components, &mut HashSet::new());
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
