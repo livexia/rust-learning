@@ -26,6 +26,13 @@ macro_rules! err {
 
 type Result<T> = ::std::result::Result<T, Box<dyn Error>>;
 
+fn part1() -> Result<()> {
+    let start = Instant::now();
+
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    todo!()
+}
+
 fn main() -> Result<()>{
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
@@ -33,13 +40,6 @@ fn main() -> Result<()>{
     // part1()?;
     // part2()?;
     Ok(())
-}
-
-fn part1() -> Result<()> {
-    let start = Instant::now();
-
-    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    todo!()
 }
 EOM
 
