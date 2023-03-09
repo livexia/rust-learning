@@ -89,23 +89,29 @@ fn bfs(components: &[(usize, usize)]) -> (usize, usize) {
     assert!(components.len() < 128);
 
     let mut queue = VecDeque::new();
-    queue.push_back((src, 0, 0, 0));
+    queue.push_back((src, 0, 0));
 
-    let (mut max_strength, mut max_depth) = (0, 0);
-    while let Some((cur, path, s, d)) = queue.pop_front() {
-        max_strength = s.max(max_strength);
-        max_depth = d.max(max_depth);
-        for next in &components {
-            if !next.contained_in(path) {
-                if cur.port.1 == next.port.0 {
-                    queue.push_back((next.clone(), path | next.hash(), s + next.strength(), d + 1))
-                } else if cur.port.1 == next.port.1 {
-                    queue.push_back((next.rev(), path | next.hash(), s + next.strength(), d + 1))
+    let mut max_strength = 0;
+    let mut max_depth_strength = 0;
+    while !queue.is_empty() {
+        let size = queue.len();
+        max_depth_strength = 0;
+        for _ in 0..size {
+            let (cur, path, s) = queue.pop_front().unwrap();
+            max_strength = s.max(max_strength);
+            max_depth_strength = s.max(max_depth_strength);
+            for next in &components {
+                if !next.contained_in(path) {
+                    if cur.port.1 == next.port.0 {
+                        queue.push_back((*next, path | next.hash(), s + next.strength()))
+                    } else if cur.port.1 == next.port.1 {
+                        queue.push_back((next.rev(), path | next.hash(), s + next.strength()))
+                    }
                 }
             }
         }
     }
-    (max_strength, max_depth)
+    (max_strength, max_depth_strength)
 }
 
 fn part1(components: &[(usize, usize)]) -> Result<usize> {
