@@ -93,19 +93,23 @@ fn bfs(components: &[(usize, usize)]) -> (usize, usize) {
 
     let mut max_strength = 0;
     let mut max_depth_strength = 0;
+
+    let mut visited = HashSet::new();
     while !queue.is_empty() {
         let size = queue.len();
         max_depth_strength = 0;
         for _ in 0..size {
             let (cur, path, s) = queue.pop_front().unwrap();
-            max_strength = s.max(max_strength);
-            max_depth_strength = s.max(max_depth_strength);
-            for next in &components {
-                if !next.contained_in(path) {
-                    if cur.port.1 == next.port.0 {
-                        queue.push_back((*next, path | next.hash(), s + next.strength()))
-                    } else if cur.port.1 == next.port.1 {
-                        queue.push_back((next.rev(), path | next.hash(), s + next.strength()))
+            if visited.insert((path, cur.port.1)) {
+                max_strength = s.max(max_strength);
+                max_depth_strength = s.max(max_depth_strength);
+                for next in &components {
+                    if !next.contained_in(path) {
+                        if cur.port.1 == next.port.0 {
+                            queue.push_back((*next, path | next.hash(), s + next.strength()))
+                        } else if cur.port.1 == next.port.1 {
+                            queue.push_back((next.rev(), path | next.hash(), s + next.strength()))
+                        }
                     }
                 }
             }
