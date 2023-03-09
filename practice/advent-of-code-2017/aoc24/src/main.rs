@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
@@ -25,6 +25,7 @@ fn parse_input(input: &str) -> Result<Vec<(usize, usize)>> {
     Ok(r)
 }
 
+#[allow(dead_code)]
 fn dfs(
     cur: (usize, usize),
     components: &[(usize, usize)],
@@ -43,12 +44,86 @@ fn dfs(
     max_strength
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Component {
+    id: usize,
+    port: (usize, usize),
+}
+
+impl Component {
+    fn new(id: usize, port: (usize, usize)) -> Component {
+        Self { id, port }
+    }
+
+    fn rev(&self) -> Self {
+        Self {
+            id: self.id,
+            port: (self.port.1, self.port.0),
+        }
+    }
+
+    fn hash(&self) -> u128 {
+        1 << self.id
+    }
+
+    fn contained_in(&self, h: u128) -> bool {
+        self.hash() & h != 0
+    }
+
+    fn strength(&self) -> usize {
+        self.port.0 + self.port.1
+    }
+}
+
+fn ports_to_components(components: &[(usize, usize)]) -> Vec<Component> {
+    components
+        .iter()
+        .enumerate()
+        .map(|(i, p)| Component::new(i, *p))
+        .collect()
+}
+
+fn bfs(components: &[(usize, usize)]) -> (usize, usize) {
+    let components = ports_to_components(components);
+    let src = Component::new(components.len(), (0, 0));
+    assert!(components.len() < 128);
+
+    let mut queue = VecDeque::new();
+    queue.push_back((src, 0, 0, 0));
+
+    let (mut max_strength, mut max_depth) = (0, 0);
+    while let Some((cur, path, s, d)) = queue.pop_front() {
+        max_strength = s.max(max_strength);
+        max_depth = d.max(max_depth);
+        for next in &components {
+            if !next.contained_in(path) {
+                if cur.port.1 == next.port.0 {
+                    queue.push_back((next.clone(), path | next.hash(), s + next.strength(), d + 1))
+                } else if cur.port.1 == next.port.1 {
+                    queue.push_back((next.rev(), path | next.hash(), s + next.strength(), d + 1))
+                }
+            }
+        }
+    }
+    (max_strength, max_depth)
+}
+
 fn part1(components: &[(usize, usize)]) -> Result<usize> {
     let start = Instant::now();
 
-    let result = dfs((0, 0), components, &mut HashSet::new());
+    let result = bfs(components).0;
 
     writeln!(io::stdout(), "Part 1: {result}")?;
+    writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
+    Ok(result)
+}
+
+fn part2(components: &[(usize, usize)]) -> Result<usize> {
+    let start = Instant::now();
+
+    let result = bfs(components).1;
+
+    writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
 }
@@ -59,7 +134,7 @@ fn main() -> Result<()> {
     let components = parse_input(&input)?;
 
     part1(&components)?;
-    // part2()?;
+    part2(&components)?;
     Ok(())
 }
 
@@ -75,4 +150,5 @@ fn example_input() {
         9/10";
     let components = parse_input(input).unwrap();
     assert_eq!(part1(&components).unwrap(), 31);
+    assert_eq!(part2(&components).unwrap(), 19);
 }
