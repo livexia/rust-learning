@@ -3,9 +3,9 @@ use nom::{
     sequence::preceded,
     IResult,
 };
+use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
-use std::{collections::HashSet, error::Error};
 
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) }
@@ -89,25 +89,27 @@ fn parse_input(input: &str) -> Result<(usize, usize, Vec<State>)> {
 fn part1(begin: usize, steps: usize, states: &[State]) -> Result<usize> {
     let start = Instant::now();
 
-    let mut tape: HashSet<i32> = HashSet::new();
+    let mut tape = vec![0u8; steps * 2 + 2];
     let mut cur_state = begin;
-    let mut cur_pos = 0;
+    let mut cur_pos = steps as i32;
+
+    let mut result = 0;
     for _ in 0..steps {
-        let (value, dir, next_state) = if !tape.contains(&cur_pos) {
+        let cur_value = tape[cur_pos as usize];
+        let (value, dir, next_state) = if cur_value == 0 {
             states[cur_state].0
         } else {
             states[cur_state].1
         };
-        if value == 0 {
-            tape.remove(&cur_pos);
-        } else {
-            tape.insert(cur_pos);
+        if cur_value == 0 && value == 1 {
+            result += 1;
+        } else if cur_value == 1 && value == 0 {
+            result -= 1;
         }
+        tape[cur_pos as usize] = value;
         cur_pos += dir;
         cur_state = next_state;
     }
-
-    let result = tape.len();
 
     writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
