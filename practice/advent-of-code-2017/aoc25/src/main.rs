@@ -1,13 +1,11 @@
 use nom::{
-    branch::alt,
     bytes::complete::{tag, take, take_till, take_until},
-    character::is_alphabetic,
     sequence::preceded,
-    Finish, IResult,
+    IResult,
 };
-use std::error::Error;
 use std::io::{self, Read, Write};
 use std::time::Instant;
+use std::{collections::HashSet, error::Error};
 
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<dyn Error>::from(format!($($tt)*))) }
@@ -88,11 +86,32 @@ fn parse_input(input: &str) -> Result<(usize, usize, Vec<State>)> {
     Ok((begin, steps, states))
 }
 
-fn part1(begin: usize, steps: usize, states: &[State]) -> Result<()> {
+fn part1(begin: usize, steps: usize, states: &[State]) -> Result<usize> {
     let start = Instant::now();
 
+    let mut tape: HashSet<i32> = HashSet::new();
+    let mut cur_state = begin;
+    let mut cur_pos = 0;
+    for _ in 0..steps {
+        let (value, dir, next_state) = if !tape.contains(&cur_pos) {
+            states[cur_state].0
+        } else {
+            states[cur_state].1
+        };
+        if value == 0 {
+            tape.remove(&cur_pos);
+        } else {
+            tape.insert(cur_pos);
+        }
+        cur_pos += dir;
+        cur_state = next_state;
+    }
+
+    let result = tape.len();
+
+    writeln!(io::stdout(), "Part 1: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
-    todo!()
+    Ok(result)
 }
 
 fn main() -> Result<()> {
@@ -130,4 +149,5 @@ In state B:
     - Move one slot to the right.
     - Continue with state A.";
     let (begin, steps, states) = parse_input(&input).unwrap();
+    assert_eq!(part1(begin, steps, &states).unwrap(), 3);
 }
