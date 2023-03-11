@@ -35,7 +35,6 @@ fn parse_rule(input: &str) -> IResult<&str, Rule> {
         take_until("Continue with state "),
         preceded(tag("Continue with state "), take(1usize)),
     )(input)?;
-    println!("{:?} {:?} {:?}", write_value, move_dir, next_state);
     Ok((
         input,
         (
@@ -58,21 +57,38 @@ fn parse_state(input: &str) -> IResult<&str, (usize, State)> {
     Ok((input, (state, (zero_rule, one_rule))))
 }
 
-fn parse_input(input: &str) -> IResult<&str, (usize, usize, Vec<State>)> {
-    let (input, begin) = preceded(tag("Begin in state "), take(1usize))(input)?;
-    let (input, steps) = preceded(
-        take_till(|c: char| c.is_numeric()),
-        take_till(|c: char| c == ' '),
-    )(input)?;
-    let begin = state_to_id(begin);
-    let steps = steps.parse().unwrap();
-    dbg!(begin, steps);
-
-    println!("{:?}", parse_state(input));
-    Ok(("", (begin, steps, vec![])))
+fn parse_begin(input: &str) -> IResult<&str, &str> {
+    preceded(tag("Begin in state "), take(1usize))(input)
 }
 
-fn part1() -> Result<()> {
+fn parse_checksum(input: &str) -> IResult<&str, &str> {
+    preceded(
+        take_till(|c: char| c.is_numeric()),
+        take_till(|c: char| c == ' '),
+    )(input)
+}
+
+fn parse_input(input: &str) -> Result<(usize, usize, Vec<State>)> {
+    let (input, begin) = match parse_begin(input) {
+        Ok((i, b)) => (i, state_to_id(b)),
+        _ => return err!("unable to parse the start state"),
+    };
+    let (input, steps) = match parse_checksum(input) {
+        Ok((i, s)) => (i, s.parse()?),
+        _ => return err!("unable to parse the checksum"),
+    };
+
+    let mut states = vec![];
+    let mut input = input;
+    while let Ok((n_input, (id, s))) = parse_state(input) {
+        input = n_input;
+        assert_eq!(states.len(), id);
+        states.push(s);
+    }
+    Ok((begin, steps, states))
+}
+
+fn part1(begin: usize, steps: usize, states: &[State]) -> Result<()> {
     let start = Instant::now();
 
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
@@ -82,9 +98,9 @@ fn part1() -> Result<()> {
 fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
-    let (_, (begin, steps, states)) = parse_input(&input)?;
+    let (begin, steps, states) = parse_input(&input)?;
 
-    // part1()?;
+    part1(begin, steps, &states)?;
     // part2()?;
     Ok(())
 }
