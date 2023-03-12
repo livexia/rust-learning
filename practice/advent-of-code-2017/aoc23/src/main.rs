@@ -171,6 +171,15 @@ fn parse_input(input: &str) -> Result<Cpu> {
     ))
 }
 
+fn is_composite(n: Int) -> bool {
+    for f in 2..n {
+        if n % f == 0 {
+            return true;
+        }
+    }
+    false
+}
+
 fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
@@ -211,14 +220,17 @@ fn part2(cpu: &Cpu) -> Result<Int> {
     cpu.registers.insert('c', 126300);
     cpu.registers.insert('e', b);
     cpu.registers.insert('g', 0);
-    while cpu.execute(None).is_ok() {
-        if cpu.pc == 19 {
-            println!("{}", cpu.pc);
-            println!("{:?}", cpu.registers);
-        }
-    }
+    // while cpu.execute(None).is_ok() {
+    // if cpu.pc == 19 {
+    // println!("{}", cpu.pc);
+    // println!("{:?}", cpu.registers);
+    // }
+    // }
+    let result = (109300..=126300)
+        .step_by(17)
+        .filter(|&n| is_composite(n))
+        .count() as Int;
 
-    let &result = cpu.registers.get(&'h').unwrap();
     writeln!(io::stdout(), "Part 2: {result}")?;
     writeln!(io::stdout(), "> Time elapsed is: {:?}", start.elapsed())?;
     Ok(result)
@@ -252,7 +264,7 @@ fn example_input() {
     assert_eq!(part2(&cpu).unwrap(), 3);
 }
 
-fn input() -> i32 {
+fn input() -> () {
     let mut pc = 0;
     let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h) = (1, 0, 0, 0, 0, 0, 0, 0);
 
@@ -308,7 +320,7 @@ fn input() -> i32 {
         pc += 2;
     } else {
         // pc == 29
-        return h;
+        // return h;
     }
     b += 17; // 30
     pc -= 23; // pc == 31

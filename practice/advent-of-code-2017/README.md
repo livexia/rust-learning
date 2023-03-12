@@ -6,3 +6,5 @@
   - https://redd.it/7kfgtd
   - https://redd.it/7k5mrq
   - https://en.wikipedia.org/wiki/Landau's_function
+- Day 23:
+  - https://old.reddit.com/r/adventofcode/comments/7lms6p/2017_day_23_solutions/drnjwq7/
