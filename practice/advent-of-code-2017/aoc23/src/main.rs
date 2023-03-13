@@ -209,17 +209,17 @@ fn part1(cpu: &Cpu) -> Result<Int> {
 fn part2(cpu: &Cpu) -> Result<Int> {
     let start = Instant::now();
 
-    let mut cpu = cpu.to_owned();
-    cpu.registers.insert('a', 1);
+    // let mut cpu = cpu.to_owned();
+    // cpu.registers.insert('a', 1);
 
-    cpu.pc = 19;
-    let b = 109300 + 17 * 1000;
-    cpu.registers.insert('d', b - 2);
-    cpu.registers.insert('f', 1);
-    cpu.registers.insert('b', b);
-    cpu.registers.insert('c', 126300);
-    cpu.registers.insert('e', b);
-    cpu.registers.insert('g', 0);
+    // cpu.pc = 19;
+    // let b = 109300 + 17 * 1000;
+    // cpu.registers.insert('d', b - 2);
+    // cpu.registers.insert('f', 1);
+    // cpu.registers.insert('b', b);
+    // cpu.registers.insert('c', 126300);
+    // cpu.registers.insert('e', b);
+    // cpu.registers.insert('g', 0);
     // while cpu.execute(None).is_ok() {
     // if cpu.pc == 19 {
     // println!("{}", cpu.pc);
@@ -262,66 +262,4 @@ fn example_input() {
         rcv d";
     let cpu = parse_input(input).unwrap();
     assert_eq!(part2(&cpu).unwrap(), 3);
-}
-
-fn input() -> () {
-    let mut pc = 0;
-    let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h) = (1, 0, 0, 0, 0, 0, 0, 0);
-
-    b = 93; // 0
-    c = b; // 1
-    if a != 0 {
-        // pc == 2 -> 4
-        pc += 2;
-        b *= 100;
-        c += 100_000;
-        c = b;
-    } else {
-        // pc == 3 -> 8
-        pc += 5;
-    }
-    b *= 100; // 4
-    b += 100_000; // 5
-    c = b; // 6
-    c += 17_000; // 7
-    f = 1; // 8
-    d = 2; // 9
-    e = 2; // 10
-    g = d; // 11
-    g *= e; // 12
-    g = g - b; // 13
-    if g != 0 {
-        // pc == 14 -> 16
-        pc += 2;
-    }
-    f = 0; // 15
-    e += 1; // 16
-    g = e; // 17
-    g -= b; // 18
-    if g != 0 {
-        // pc == 19 -> 11
-        pc -= 8;
-    }
-    d += 1; // 20
-    g = d; // 21
-    g -= b; // 22
-    if g != 0 {
-        // pc == 23
-        pc -= 13;
-    } else if f != 0 {
-        // pc == 24
-        pc += 2;
-    }
-    h += 1; // 25
-    g = b; // 26
-    g -= c; // 27
-    if g != 0 {
-        // pc == 28
-        pc += 2;
-    } else {
-        // pc == 29
-        // return h;
-    }
-    b += 17; // 30
-    pc -= 23; // pc == 31
 }
