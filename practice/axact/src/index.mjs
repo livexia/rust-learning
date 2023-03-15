@@ -1,18 +1,25 @@
 import { h, Component, render } from 'https://esm.sh/preact';
+import htm from 'https://esm.sh/htm';
 
-document.addEventListener("DOMContentLoaded", () => {
+const html = htm.bind(h);
 
-  setInterval(async () => {
-    let response = await fetch('/api/cpus');
-    if (response.status != 200) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+function App(props) {
+  console.log(props.cpus);
+  return html`
+    <div>
+      ${props.cpus.map((cpu) => {
+    return html` <div>${cpu.toFixed(2)}% usage</div> `;
+  })}
+    </div >
+  `;
+}
 
-    let json = await response.json();
-    // document.body.textContent = JSON.stringify(json, null, 2);
+setInterval(async () => {
+  let response = await fetch('/api/cpus');
+  if (response.status != 200) {
+    throw new Error(`HTTP error! status: ${response.status} `);
+  }
 
-    const app = h("pre", null, JSON.stringify(json, null, 2));
-
-    render(app, document.body);
-  }, 1000);
-});
+  let json = await response.json();
+  render(html`<${App} cpus=${json}></${App}>`, document.body);
+}, 1000);
