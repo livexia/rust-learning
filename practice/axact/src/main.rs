@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use axum::{
     extract::State,
+    http::Response,
     response::{Html, IntoResponse},
     routing::get,
     Json, Router, Server,
@@ -13,6 +14,7 @@ async fn main() {
     let router = Router::new()
         .route("/", get(root_get))
         .route("/api/cpus", get(cpus_get))
+        .route("/index.js", get(indexjs_get))
         .with_state(AppState {
             sys: Arc::new(Mutex::new(System::new())),
         });
@@ -31,8 +33,19 @@ struct AppState {
 
 #[axum::debug_handler]
 async fn root_get() -> impl IntoResponse {
-    let s = tokio::fs::read_to_string("src/index.html").await.unwrap();
-    Html(s)
+    let markup = tokio::fs::read_to_string("src/index.html").await.unwrap();
+
+    Html(markup)
+}
+
+#[axum::debug_handler]
+async fn indexjs_get() -> impl IntoResponse {
+    let markup = tokio::fs::read_to_string("src/index.js").await.unwrap();
+
+    Response::builder()
+        .header("content-type", "application/javascript;charset=utf-8")
+        .body(markup)
+        .unwrap()
 }
 
 #[axum::debug_handler]
