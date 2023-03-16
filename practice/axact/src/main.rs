@@ -23,7 +23,6 @@ async fn main() {
         .route("/", get(root_get))
         .route("/index.mjs", get(indexmjs_get))
         .route("/index.css", get(indexcss_get))
-        // .route("/api/cpus", get(cpus_get))
         .route("/realtime/cpus", get(realtime_cpus_get))
         .with_state(app_state.clone());
 
@@ -77,20 +76,12 @@ async fn indexcss_get() -> impl IntoResponse {
         .unwrap()
 }
 
-// #[axum::debug_handler]
-// async fn cpus_get(State(state): State<AppState>) -> impl IntoResponse {
-//     let start = std::time::Instant::now();
-//     let v = state.cpus.lock().unwrap().clone();
-//     println!("Lock time: {:?}", start.elapsed());
-//     Json(v)
-// }
-
 #[axum::debug_handler]
 async fn realtime_cpus_get(
     State(state): State<AppState>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    ws.on_upgrade(|ws: WebSocket| async { realtime_cpus_stream(state, ws).await })
+    ws.on_upgrade(|ws: WebSocket| realtime_cpus_stream(state, ws))
 }
 
 async fn realtime_cpus_stream(app_state: AppState, mut ws: WebSocket) {
