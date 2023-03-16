@@ -24,8 +24,11 @@ async fn main() {
         loop {
             sys.refresh_cpu();
             let v: Vec<_> = sys.cpus().iter().map(|cpu| cpu.cpu_usage()).collect();
-            let mut cpus = app_state.cpus.lock().unwrap();
-            *cpus = v;
+
+            {
+                let mut cpus = app_state.cpus.lock().unwrap();
+                *cpus = v;
+            }
 
             std::thread::sleep(System::MINIMUM_CPU_UPDATE_INTERVAL);
         }
@@ -72,6 +75,8 @@ async fn indexcss_get() -> impl IntoResponse {
 
 #[axum::debug_handler]
 async fn cpus_get(State(state): State<AppState>) -> impl IntoResponse {
+    let start = std::time::Instant::now();
     let v = state.cpus.lock().unwrap().clone();
+    println!("Lock time: {:?}", start.elapsed());
     Json(v)
 }
