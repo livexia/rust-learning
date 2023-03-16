@@ -4,7 +4,6 @@ import htm from 'https://esm.sh/htm';
 const html = htm.bind(h);
 
 function App(props) {
-  console.log(props.cpus);
   return html`
     <div>
       ${props.cpus.map((cpu) => {
@@ -17,16 +16,25 @@ function App(props) {
   `;
 }
 
-let update = async () => {
-  let response = await fetch('/api/cpus');
-  if (response.status != 200) {
-    throw new Error(`HTTP error! status: ${response.status} `);
-  }
+// let update = async () => {
+//   let response = await fetch('/api/cpus');
+//   if (response.status != 200) {
+//     throw new Error(`HTTP error! status: ${response.status} `);
+//   }
+// 
+//   let json = await response.json();
+//   render(html`<${App} cpus=${json}></${App}>`, document.body);
+// };
+// 
+// update();
+// setInterval(update, 200);
 
-  let json = await response.json();
+let url = new URL("realtime/cpus", window.location.href);
+// http => ws
+// https => wss
+url.protocol = url.protocol.replace("http", "ws");
+let ws = new WebSocket(url.href);
+ws.onmessage = (ev) => {
+  let json = JSON.parse(ev.data);
   render(html`<${App} cpus=${json}></${App}>`, document.body);
 };
-
-update();
-setInterval(update, 200);
-
