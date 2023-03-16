@@ -1,7 +1,10 @@
 use std::sync::{Arc, Mutex};
 
 use axum::{
-    extract::State,
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        State,
+    },
     http::Response,
     response::{Html, IntoResponse},
     routing::get,
@@ -14,9 +17,10 @@ async fn main() {
     let app_state = AppState::default();
     let router = Router::new()
         .route("/", get(root_get))
-        .route("/api/cpus", get(cpus_get))
         .route("/index.mjs", get(indexmjs_get))
         .route("/index.css", get(indexcss_get))
+        .route("/api/cpus", get(cpus_get))
+        .route("/realtime/cpus", get(realtime_cpus_get))
         .with_state(app_state.clone());
 
     tokio::task::spawn_blocking(move || {
@@ -79,4 +83,20 @@ async fn cpus_get(State(state): State<AppState>) -> impl IntoResponse {
     let v = state.cpus.lock().unwrap().clone();
     println!("Lock time: {:?}", start.elapsed());
     Json(v)
+}
+
+#[axum::debug_handler]
+async fn realtime_cpus_get(
+    State(state): State<AppState>,
+    ws: WebSocketUpgrade,
+) -> impl IntoResponse {
+    ws.on_upgrade(|ws: WebSocket| async { realtime_cpus_stream(state, ws).await })
+}
+
+async fn realtime_cpus_stream(app_state: AppState, mut ws: WebSocket) {
+    loop {
+        let payload = serde_json::to_string(&*app_state.cpus.lock().unwrap()).unwrap();
+        ws.send(Message::Text(payload)).await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
 }
